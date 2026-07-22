@@ -5,12 +5,17 @@ let package = Package(
     name: "codex-state",
     platforms: [.macOS(.v14)],
     products: [
-        .library(name: "CodexStateCore", targets: ["CodexStateCore"])
+        .library(name: "CodexStateCore", targets: ["CodexStateCore"]),
+        .executable(name: "CodexState", targets: ["CodexState"]),
     ],
     targets: [
         .target(
             name: "CodexStateCore",
             resources: [.process("Pricing/Resources")]
+        ),
+        .executableTarget(
+            name: "CodexState",
+            dependencies: ["CodexStateCore"]
         ),
         .testTarget(
             name: "CodexStateCoreTests",
