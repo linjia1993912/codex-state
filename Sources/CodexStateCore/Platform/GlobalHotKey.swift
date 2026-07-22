@@ -41,6 +41,19 @@ public final class GlobalHotKey {
         }
     }
 
+    public static func registerIfAvailable(
+        action: @escaping () -> Void,
+        using register: @MainActor (@escaping () -> Void) throws -> GlobalHotKey = GlobalHotKey.init(action:)
+    ) -> GlobalHotKey? {
+        do {
+            return try register(action)
+        } catch {
+            // 快捷键可能被其他应用占用；面板和数据刷新不应因此停止。
+            NSLog("CodexState：全局快捷键注册失败：%@", error.localizedDescription)
+            return nil
+        }
+    }
+
     public func stop() {
         if let hotKey { UnregisterEventHotKey(hotKey) }
         if let eventHandler { RemoveEventHandler(eventHandler) }

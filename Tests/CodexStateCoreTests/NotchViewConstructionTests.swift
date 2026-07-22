@@ -6,12 +6,38 @@ import Testing
 struct NotchViewConstructionTests {
     @Test
     func rootViewCanBeConstructed() {
-        let store = UsageStore(
+        let store = makeStore()
+
+        _ = NotchRootView(store: store, presentation: .constant(.collapsed))
+    }
+
+    @Test
+    func expandedRootViewCanBeConstructedWithoutAccount() {
+        _ = NotchRootView(store: makeStore(), presentation: .constant(.expanded))
+    }
+
+    @Test
+    func failedGlobalHotKeyRegistrationReturnsNil() {
+        var registrationAttempted = false
+
+        let hotKey = GlobalHotKey.registerIfAvailable(action: {}) { _ in
+            registrationAttempted = true
+            throw TestError.registrationFailed
+        }
+
+        #expect(registrationAttempted)
+        #expect(hotKey == nil)
+    }
+
+    private func makeStore() -> UsageStore {
+        UsageStore(
             remoteLoader: { CodexRemoteSnapshot(account: nil, quotaWindows: []) },
             sessionLoader: { SessionUsageResult(contributions: [], malformedLineCount: 0) },
             catalog: ModelPriceCatalog(prices: [:])
         )
-
-        _ = NotchRootView(store: store, presentation: .constant(.collapsed))
     }
+}
+
+private enum TestError: Error {
+    case registrationFailed
 }

@@ -42,7 +42,7 @@ private final class AppDelegate: NSObject, NSApplicationDelegate {
 
             self.store = store
             self.panelController = panelController
-            hotKey = try GlobalHotKey { [weak panelController] in panelController?.toggleExpanded() }
+            hotKey = GlobalHotKey.registerIfAvailable { [weak panelController] in panelController?.toggleExpanded() }
             panelController.show()
             startRefreshing(store: store)
         } catch {

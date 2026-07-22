@@ -3,7 +3,7 @@ import QuartzCore
 import SwiftUI
 
 @MainActor
-public final class NotchPanelController {
+public final class NotchPanelController: NSObject {
     public private(set) var presentation: NotchPresentation = .collapsed
 
     private let store: UsageStore
@@ -19,12 +19,23 @@ public final class NotchPanelController {
             backing: .buffered,
             defer: false
         )
+        super.init()
         panel.isOpaque = false
         panel.backgroundColor = .clear
         panel.hasShadow = false
         panel.level = .statusBar
         panel.collectionBehavior = [.canJoinAllSpaces, .fullScreenAuxiliary]
         panel.contentView = makeHostingView()
+        NotificationCenter.default.addObserver(
+            self,
+            selector: #selector(screenParametersDidChange),
+            name: NSApplication.didChangeScreenParametersNotification,
+            object: nil
+        )
+    }
+
+    deinit {
+        NotificationCenter.default.removeObserver(self)
     }
 
     public static func size(for presentation: NotchPresentation) -> CGSize {
@@ -87,6 +98,10 @@ public final class NotchPanelController {
 
     private static func preferredScreen() -> NSScreen? {
         NSScreen.screens.first { $0.safeAreaInsets.top > 0 } ?? NSScreen.main ?? NSScreen.screens.first
+    }
+
+    @objc private func screenParametersDidChange(_: Notification) {
+        reposition(size: Self.size(for: presentation), animated: false)
     }
 
     private func updateClickMonitors() {

@@ -56,17 +56,15 @@ struct ExpandedUsageView: View {
         }
     }
 
-    @ViewBuilder
     private var account: some View {
-        if let account = store.snapshot.account {
-            HStack {
-                Label(account.maskedEmail ?? "未知账号", systemImage: "person.crop.circle")
-                Spacer()
-                Text(account.plan ?? "未知套餐")
-                    .foregroundStyle(.secondary)
-            }
-            .accessibilityElement(children: .combine)
+        let account = store.snapshot.account
+        return HStack {
+            Label(account.map { $0.maskedEmail ?? "未知账号" } ?? "未连接账号", systemImage: "person.crop.circle")
+            Spacer()
+            Text(account.map { $0.plan ?? "未知套餐" } ?? "—")
+                .foregroundStyle(.secondary)
         }
+        .accessibilityElement(children: .combine)
     }
 
     @ViewBuilder
