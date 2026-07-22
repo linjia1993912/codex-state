@@ -31,13 +31,29 @@ public struct ModelPriceCatalog: Sendable {
     }
 
     public static func bundled() throws -> ModelPriceCatalog {
-        guard let url = Bundle.module.url(forResource: "ModelPrices", withExtension: "json") else {
-            throw CocoaError(.fileNoSuchFile)
+        let appResourceURL = Bundle.main.resourceURL?
+            .appendingPathComponent("codex-state_CodexStateCore.bundle", isDirectory: true)
+            .appendingPathComponent("ModelPrices.json")
+        let url: URL
+        if let appResourceURL, FileManager.default.fileExists(atPath: appResourceURL.path) {
+            url = appResourceURL
+        } else if Bundle.main.bundleURL.pathExtension != "app",
+                  let moduleURL = Bundle.module.url(forResource: "ModelPrices", withExtension: "json") {
+            // SwiftPM 测试和直接运行可执行文件时，资源仍由 Bundle.module 管理。
+            url = moduleURL
+        } else {
+            throw ModelPriceCatalogError.resourceNotFound
         }
 
         let catalog = try JSONDecoder().decode(BundledPrices.self, from: Data(contentsOf: url))
         return ModelPriceCatalog(prices: catalog.models)
     }
+}
+
+private enum ModelPriceCatalogError: LocalizedError {
+    case resourceNotFound
+
+    var errorDescription: String? { "未找到内置模型价格资源 ModelPrices.json" }
 }
 
 private struct BundledPrices: Decodable {
