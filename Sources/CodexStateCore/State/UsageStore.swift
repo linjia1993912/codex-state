@@ -38,7 +38,8 @@ public final class UsageStore {
     }
 
     public func refresh(force: Bool = false) async {
-        guard !isRefreshing, force || !isFresh else { return }
+        guard !isRefreshing else { return }
+        guard force || !isFresh else { return }
         isRefreshing = true
         defer { isRefreshing = false }
 

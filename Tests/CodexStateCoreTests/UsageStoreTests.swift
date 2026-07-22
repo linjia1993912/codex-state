@@ -61,6 +61,30 @@ struct UsageStoreTests {
         #expect(loader.remoteCallCount == 1)
     }
 
+    @Test
+    func concurrentRefreshesStartOnlyOneRemoteLoad() async {
+        let loader = BlockingLoader()
+        let now = referenceDate
+        let store = UsageStore(
+            remoteLoader: loader.loadRemote,
+            sessionLoader: loader.loadSessions,
+            catalog: ModelPriceCatalog(prices: [:]),
+            calendar: utcCalendar,
+            now: { now }
+        )
+
+        async let firstRefresh: Void = store.refresh(force: true)
+        await loader.waitUntilFirstRemoteLoadStarts()
+        async let secondRefresh: Void = store.refresh(force: true)
+        await Task.yield()
+
+        #expect(loader.remoteCallCount == 1)
+        loader.unblockFirstRemoteLoad()
+        await firstRefresh
+        await secondRefresh
+        #expect(loader.remoteCallCount == 1)
+    }
+
     private var utcCalendar: Calendar {
         var calendar = Calendar(identifier: .gregorian)
         calendar.timeZone = TimeZone(secondsFromGMT: 0)!
@@ -92,4 +116,51 @@ private final class TestLoader: @unchecked Sendable {
 
 private enum TestError: Error {
     case failed
+}
+
+private final class BlockingLoader: @unchecked Sendable {
+    private let lock = NSLock()
+    private let unblockFirstLoad = DispatchSemaphore(value: 0)
+    private var callCount = 0
+    private var firstLoadStarted = false
+    private var firstLoadWaiters: [CheckedContinuation<Void, Never>] = []
+
+    var remoteCallCount: Int {
+        lock.withLock { callCount }
+    }
+
+    func loadRemote() -> CodexRemoteSnapshot {
+        let (isFirstLoad, waiters): (Bool, [CheckedContinuation<Void, Never>]) = lock.withLock {
+            callCount += 1
+            guard callCount == 1 else { return (false, []) }
+            firstLoadStarted = true
+            let waiters = firstLoadWaiters
+            firstLoadWaiters = []
+            return (true, waiters)
+        }
+        if isFirstLoad {
+            waiters.forEach { $0.resume() }
+            unblockFirstLoad.wait()
+        }
+        return CodexRemoteSnapshot(account: nil, quotaWindows: [])
+    }
+
+    func loadSessions() -> SessionUsageResult {
+        SessionUsageResult(contributions: [], malformedLineCount: 0)
+    }
+
+    func waitUntilFirstRemoteLoadStarts() async {
+        await withCheckedContinuation { continuation in
+            let shouldResume = lock.withLock {
+                if firstLoadStarted { return true }
+                firstLoadWaiters.append(continuation)
+                return false
+            }
+            if shouldResume { continuation.resume() }
+        }
+    }
+
+    func unblockFirstRemoteLoad() {
+        unblockFirstLoad.signal()
+    }
 }
