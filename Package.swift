@@ -9,6 +9,15 @@ let package = Package(
     ],
     targets: [
         .target(name: "CodexStateCore"),
-        .testTarget(name: "CodexStateCoreTests", dependencies: ["CodexStateCore"])
+        .testTarget(
+            name: "CodexStateCoreTests",
+            dependencies: ["CodexStateCore"],
+            swiftSettings: [
+                .unsafeFlags(["-F", "/Library/Developer/CommandLineTools/Library/Developer/Frameworks"])
+            ],
+            linkerSettings: [
+                .unsafeFlags(["-F", "/Library/Developer/CommandLineTools/Library/Developer/Frameworks"])
+            ]
+        )
     ]
 )
