@@ -27,6 +27,16 @@ public enum CodexRPCError: LocalizedError {
 }
 
 public enum CodexRPCCodec {
+    static func encodeInitializedNotification() throws -> Data {
+        var data = try JSONSerialization.data(withJSONObject: [
+            "jsonrpc": "2.0",
+            "method": "initialized",
+            "params": [:],
+        ])
+        data.append(0x0A)
+        return data
+    }
+
     public static func decodeAccount(_ data: Data) throws -> AccountSummary? {
         let account = try decode(AccountResponse.self, from: data).account
         guard account?.type.lowercased() == "chatgpt" else { return nil }
@@ -108,7 +118,7 @@ public final class CodexRPCClient: @unchecked Sendable {
             throw CodexRPCError.executableNotFound
         }
 
-        // 仅发送读取请求且禁止刷新令牌，避免触发登录或网络请求。
+        // 初始化握手完成后必须通知服务端，随后才可读取账号；禁止刷新令牌以避免触发登录或网络请求。
         _ = try request(
             id: 1,
             method: "initialize",
@@ -116,6 +126,7 @@ public final class CodexRPCClient: @unchecked Sendable {
             input: input.fileHandleForWriting,
             reader: reader
         )
+        input.fileHandleForWriting.write(try CodexRPCCodec.encodeInitializedNotification())
         let accountData = try request(
             id: 2,
             method: "account/read",
@@ -138,13 +149,35 @@ public final class CodexRPCClient: @unchecked Sendable {
     }
 
     private func resolveExecutable() throws -> URL {
-        let paths = executablePath.map { [$0] } ?? (
-            (ProcessInfo.processInfo.environment["PATH"] ?? "")
+        try Self.resolveExecutable(
+            explicitPath: executablePath,
+            environment: ProcessInfo.processInfo.environment,
+            homeDirectory: FileManager.default.homeDirectoryForCurrentUser
+        )
+    }
+
+    static func resolveExecutable(
+        explicitPath: String?,
+        environment: [String: String],
+        homeDirectory: URL,
+        fileManager: FileManager = .default
+    ) throws -> URL {
+        let nvmVersions = homeDirectory.appendingPathComponent(".nvm/versions/node", isDirectory: true)
+        let nvmPaths = (try? fileManager.contentsOfDirectory(
+            at: nvmVersions,
+            includingPropertiesForKeys: nil,
+            options: [.skipsHiddenFiles]
+        ))?.sorted {
+            $0.lastPathComponent.compare($1.lastPathComponent, options: .numeric) == .orderedDescending
+        }.map { $0.appendingPathComponent("bin/codex").path } ?? []
+        let paths = explicitPath.map { [$0] } ?? (
+            (environment["PATH"] ?? "")
                 .split(separator: ":")
                 .map { "\($0)/codex" }
                 + ["/opt/homebrew/bin/codex", "/usr/local/bin/codex"]
+                + nvmPaths
         )
-        guard let path = paths.first(where: FileManager.default.isExecutableFile(atPath:)) else {
+        guard let path = paths.first(where: fileManager.isExecutableFile(atPath:)) else {
             throw CodexRPCError.executableNotFound
         }
         return URL(fileURLWithPath: path)

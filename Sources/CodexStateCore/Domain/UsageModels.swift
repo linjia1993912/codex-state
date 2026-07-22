@@ -130,6 +130,14 @@ public enum UsageWarning: Equatable, Sendable {
     case staleData
     case malformedLogRecords(Int)
     case unknownPrice(String)
+
+    var message: String {
+        switch self {
+        case .staleData: "数据可能已过期"
+        case let .malformedLogRecords(count): "忽略了 \(count) 条无法读取的日志记录"
+        case let .unknownPrice(model): "模型 \(model) 暂无价格，成本未计入"
+        }
+    }
 }
 
 public struct UsageSnapshot: Equatable, Sendable {
@@ -172,4 +180,8 @@ public struct UsageSnapshot: Equatable, Sendable {
         isStale: false,
         warnings: []
     )
+
+    var visibleWarnings: [UsageWarning] {
+        isStale && !warnings.contains(.staleData) ? warnings + [.staleData] : warnings
+    }
 }

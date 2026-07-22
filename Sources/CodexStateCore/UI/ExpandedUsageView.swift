@@ -27,10 +27,10 @@ struct ExpandedUsageView: View {
                     totals
                     dailyBars
                     models
-                    if store.snapshot.isStale {
-                        Label("数据可能已过期", systemImage: "exclamationmark.triangle.fill")
+                    ForEach(Array(store.snapshot.visibleWarnings.enumerated()), id: \.offset) { _, warning in
+                        Label(warning.message, systemImage: "exclamationmark.triangle.fill")
                             .foregroundStyle(.orange)
-                            .accessibilityLabel("警告：数据可能已过期")
+                            .accessibilityLabel("警告：\(warning.message)")
                     }
                 }
                 .frame(maxWidth: .infinity, alignment: .leading)

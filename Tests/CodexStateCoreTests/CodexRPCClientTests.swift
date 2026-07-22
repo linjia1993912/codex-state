@@ -4,6 +4,39 @@ import Testing
 
 struct CodexRPCClientTests {
     @Test
+    func initializedNotificationHasNoID() throws {
+        let data = try CodexRPCCodec.encodeInitializedNotification()
+        let object = try #require(JSONSerialization.jsonObject(with: data) as? [String: Any])
+
+        #expect(object["jsonrpc"] as? String == "2.0")
+        #expect(object["method"] as? String == "initialized")
+        #expect(object["params"] as? [String: String] == [:])
+        #expect(object["id"] == nil)
+    }
+
+    @Test
+    func resolvesNewestExecutableFromNVMWhenPATHIsEmpty() throws {
+        let home = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        defer { try? FileManager.default.removeItem(at: home) }
+
+        for version in ["v18.20.0", "v22.1.0"] {
+            let bin = home.appendingPathComponent(".nvm/versions/node/\(version)/bin", isDirectory: true)
+            try FileManager.default.createDirectory(at: bin, withIntermediateDirectories: true)
+            let executable = bin.appendingPathComponent("codex")
+            try Data().write(to: executable)
+            try FileManager.default.setAttributes([.posixPermissions: 0o755], ofItemAtPath: executable.path)
+        }
+
+        let executable = try CodexRPCClient.resolveExecutable(
+            explicitPath: nil,
+            environment: ["PATH": ""],
+            homeDirectory: home
+        )
+
+        #expect(executable.path.hasSuffix("/.nvm/versions/node/v22.1.0/bin/codex"))
+    }
+
+    @Test
     func testDecodesChatGPTAccount() throws {
         let data = Data("""
         {"id":2,"result":{"account":{"type":"chatgpt","email":"ada@example.com","planType":"plus"}}}

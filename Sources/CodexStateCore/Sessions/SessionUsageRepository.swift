@@ -27,21 +27,29 @@ public final class SessionUsageRepository: @unchecked Sendable {
         _ = calendar
         let cached = loadCache()
         var files: [String: CachedFile] = [:]
+        let discovered = sessionFiles(home: home)
+        var failedFileCount = discovered.resourceFailureCount
 
-        for url in sessionFiles(home: home) {
-            let fingerprint = try FileFingerprint(url: url)
-            let path = url.standardizedFileURL.path
-            let result = cached.files[path]?.fingerprint == fingerprint
-                ? cached.files[path]!.result
-                : try parser(Data(contentsOf: url))
-            files[path] = CachedFile(fingerprint: fingerprint, result: result)
+        for url in discovered.urls {
+            do {
+                let fingerprint = try FileFingerprint(url: url)
+                let path = url.standardizedFileURL.path
+                let result = cached.files[path]?.fingerprint == fingerprint
+                    ? cached.files[path]!.result
+                    : try parser(Data(contentsOf: url))
+                files[path] = CachedFile(fingerprint: fingerprint, result: result)
+            } catch {
+                // 单个日志不可读或不可解析时只标记该文件，不能抹掉其他日志的有效贡献。
+                failedFileCount += 1
+            }
         }
 
-        try saveCache(Cache(files: files))
+        // 缓存只是性能优化，写入失败不能阻断本次已经得到的用量结果。
+        try? saveCache(Cache(files: files))
         let results = files.keys.sorted().compactMap { files[$0]?.result }
         return SessionUsageResult(
             contributions: results.flatMap(\.contributions),
-            malformedLineCount: results.reduce(0) { $0 + $1.malformedLineCount }
+            malformedLineCount: failedFileCount + results.reduce(0) { $0 + $1.malformedLineCount }
         )
     }
 
@@ -74,8 +82,9 @@ public final class SessionUsageRepository: @unchecked Sendable {
         }.sorted { $0.date < $1.date }
     }
 
-    private func sessionFiles(home: URL) -> [URL] {
+    private func sessionFiles(home: URL) -> (urls: [URL], resourceFailureCount: Int) {
         var files: [URL] = []
+        var resourceFailureCount = 0
         for directory in ["sessions", "archived_sessions"] {
             let url = home.appendingPathComponent(directory, isDirectory: true)
             guard let enumerator = FileManager.default.enumerator(
@@ -85,12 +94,15 @@ public final class SessionUsageRepository: @unchecked Sendable {
             ) else { continue }
 
             for case let file as URL in enumerator where file.pathExtension == "jsonl" {
-                if (try? file.resourceValues(forKeys: [.isRegularFileKey]).isRegularFile) == true {
+                do {
+                    guard try file.resourceValues(forKeys: [.isRegularFileKey]).isRegularFile == true else { continue }
                     files.append(file)
+                } catch {
+                    resourceFailureCount += 1
                 }
             }
         }
-        return files.sorted { $0.path < $1.path }
+        return (files.sorted { $0.path < $1.path }, resourceFailureCount)
     }
 
     private func loadCache() -> Cache {

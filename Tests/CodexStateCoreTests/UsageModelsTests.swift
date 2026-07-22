@@ -3,6 +3,26 @@ import Testing
 
 struct UsageModelsTests {
     @Test
+    func visibleWarningsKeepExistingWarningsAndIncludeStaleState() {
+        let snapshot = UsageSnapshot(
+            account: nil,
+            quotaWindows: [],
+            dailyUsage: [],
+            topModels: [],
+            selectedRange: .week,
+            refreshedAt: nil,
+            isStale: true,
+            warnings: [.malformedLogRecords(2), .unknownPrice("custom-model")]
+        )
+
+        #expect(snapshot.visibleWarnings == [
+            .malformedLogRecords(2),
+            .unknownPrice("custom-model"),
+            .staleData,
+        ])
+    }
+
+    @Test
     func testDeltaReturnsCurrentUsageWhenCumulativeCounterResets() {
         let previous = TokenUsage(input: 100, cachedInput: 80, output: 60, total: 240)
         let current = TokenUsage(input: 20, cachedInput: 10, output: 5, total: 35)
