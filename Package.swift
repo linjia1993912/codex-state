@@ -8,7 +8,10 @@ let package = Package(
         .library(name: "CodexStateCore", targets: ["CodexStateCore"])
     ],
     targets: [
-        .target(name: "CodexStateCore"),
+        .target(
+            name: "CodexStateCore",
+            resources: [.process("Pricing/Resources")]
+        ),
         .testTarget(
             name: "CodexStateCoreTests",
             dependencies: ["CodexStateCore"],
