@@ -28,14 +28,15 @@ public struct PeekMetric: Equatable, Sendable {
 }
 
 public enum NotchLayoutPolicy {
-    public static func metrics(snapshot: UsageSnapshot) -> [PeekMetric] {
+    public static func metrics(snapshot: UsageSnapshot, now: Date = Date()) -> [PeekMetric] {
         let windows = snapshot.quotaWindows
         if windows.count >= 2 {
             // 只消费服务端实际给出的窗口，避免把已消失的短周期额度显示为占位项。
             return windows.prefix(2).map(quotaMetric)
         }
 
-        let today = snapshot.dailyUsage.last
+        // 日统计可能只剩历史记录；必须按当天匹配，不能把最后一条误展示为今日。
+        let today = snapshot.dailyUsage.first { Calendar.current.isDate($0.date, inSameDayAs: now) }
         let tokenMetric = PeekMetric(
             kind: .todayTokens,
             title: "今日 Tokens",
