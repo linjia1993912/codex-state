@@ -30,8 +30,26 @@ struct ScreenPlacementTests {
         let metrics = NotchLayoutPolicy.metrics(snapshot: snapshot, now: now)
 
         #expect(metrics.map(\.kind) == [.quota, .todayTokens])
-        #expect(metrics[0].progress == 0.42)
+        #expect(metrics[0].title == "每周剩余")
+        #expect(metrics[0].value == "58%")
+        #expect(metrics[0].progress == 0.58)
         #expect(metrics[1].value == "1000")
+    }
+
+    @Test
+    func quotaRemainingUsesTheInverseOfUsedPercent() {
+        let quota = QuotaWindow(id: "secondary", title: "每周额度", usedPercent: 42)
+
+        #expect(quota.remainingPercent == 58)
+        #expect(quota.remainingTitle == "每周剩余")
+    }
+
+    @MainActor
+    @Test
+    func collapsedAndPeekShareTheHoverWindow() {
+        #expect(NotchPanelController.size(for: .collapsed) == CGSize(width: 300, height: 112))
+        #expect(NotchPanelController.size(for: .peek) == CGSize(width: 300, height: 112))
+        #expect(NotchPanelController.size(for: .expanded) == CGSize(width: 368, height: 430))
     }
 
     @Test

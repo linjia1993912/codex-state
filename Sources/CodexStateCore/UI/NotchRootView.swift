@@ -18,10 +18,12 @@ public struct NotchRootView: View {
             case .collapsed:
                 Color.black
                     .clipShape(Capsule())
+                    .frame(width: 150, height: 30, alignment: .top)
+                    .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
                     .accessibilityLabel("Codex 用量")
             case .peek:
                 PeekUsageView(snapshot: store.snapshot)
-                    .contentShape(Rectangle())
+                    .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
                     .onTapGesture { setPresentation(.expanded) }
             case .expanded:
                 ExpandedUsageView(store: store) {
@@ -33,6 +35,7 @@ public struct NotchRootView: View {
             width: NotchPanelController.size(for: presentation).width,
             height: NotchPanelController.size(for: presentation).height
         )
+        .contentShape(Rectangle())
         .animation(reduceMotion ? nil : .easeInOut(duration: 0.18), value: presentation)
         .onHover { hovering in
             switch (presentation, hovering) {

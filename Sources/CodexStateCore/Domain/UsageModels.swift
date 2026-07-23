@@ -127,6 +127,16 @@ public struct QuotaWindow: Equatable, Identifiable, Sendable {
         self.resetsAt = resetsAt
         self.durationMinutes = durationMinutes
     }
+
+    public var remainingPercent: Double {
+        min(max(100 - usedPercent, 0), 100)
+    }
+
+    public var remainingTitle: String {
+        title.hasSuffix("额度")
+            ? "\(title.dropLast(2))剩余"
+            : "\(title)剩余"
+    }
 }
 
 public enum UsageWarning: Equatable, Sendable {

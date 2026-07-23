@@ -58,9 +58,9 @@ public enum NotchLayoutPolicy {
     private static func quotaMetric(_ window: QuotaWindow) -> PeekMetric {
         PeekMetric(
             kind: .quota,
-            title: window.title,
-            value: "\(window.usedPercent)%",
-            progress: window.usedPercent / 100
+            title: window.remainingTitle,
+            value: String(format: "%.0f%%", window.remainingPercent),
+            progress: window.remainingPercent / 100
         )
     }
 

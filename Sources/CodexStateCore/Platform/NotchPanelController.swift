@@ -40,9 +40,8 @@ public final class NotchPanelController: NSObject {
 
     public static func size(for presentation: NotchPresentation) -> CGSize {
         switch presentation {
-        case .collapsed: CGSize(width: 150, height: 30)
-        case .peek: CGSize(width: 300, height: 80)
-        case .expanded: CGSize(width: 368, height: 410)
+        case .collapsed, .peek: CGSize(width: 300, height: 112)
+        case .expanded: CGSize(width: 368, height: 430)
         }
     }
 
