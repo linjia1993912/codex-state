@@ -17,7 +17,7 @@ struct PeekUsageView: View {
                             .font(.headline.monospacedDigit())
                         if let progress = metric.progress {
                             ProgressView(value: min(max(progress, 0), 1))
-                                .tint(progress >= 0.9 ? .orange : .blue)
+                                .tint(metric.usesWarningTint ? .orange : .blue)
                         }
                     }
                     .frame(maxWidth: .infinity, alignment: .leading)

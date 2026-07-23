@@ -25,6 +25,10 @@ public struct PeekMetric: Equatable, Sendable {
         self.value = value
         self.progress = progress
     }
+
+    public var usesWarningTint: Bool {
+        kind == .quota && (progress ?? 1) <= 0.1
+    }
 }
 
 public enum NotchLayoutPolicy {

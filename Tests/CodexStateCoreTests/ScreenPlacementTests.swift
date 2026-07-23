@@ -44,6 +44,15 @@ struct ScreenPlacementTests {
         #expect(quota.remainingTitle == "每周剩余")
     }
 
+    @Test
+    func peekMetricWarnsOnlyWhenRemainingQuotaIsAtMostTenPercent() {
+        let lowRemaining = PeekMetric(kind: .quota, title: "每周剩余", value: "10%", progress: 0.1)
+        let highRemaining = PeekMetric(kind: .quota, title: "每周剩余", value: "90%", progress: 0.9)
+
+        #expect(lowRemaining.usesWarningTint)
+        #expect(!highRemaining.usesWarningTint)
+    }
+
     @MainActor
     @Test
     func collapsedAndPeekShareTheHoverWindow() {
