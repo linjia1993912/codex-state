@@ -28,18 +28,23 @@ struct ExpandedUsageView: View {
         VStack(spacing: 0) {
             // 连接带不承载内容，避免文字和控件落入物理刘海遮挡区。
             Color.clear.frame(height: 32)
-            VStack(alignment: .leading, spacing: 10) {
+            VStack(alignment: .leading, spacing: 4) {
                 header
                 quotas
                 rangePicker
                 totals
                 DailyTrendView(days: store.snapshot.dailyUsage)
+                    .fixedSize(horizontal: false, vertical: true)
+                    .layoutPriority(2)
                 models
                 if let warning = store.snapshot.visibleWarnings.first {
                     Label(warning.message, systemImage: "exclamationmark.triangle.fill")
                         .font(.caption2)
                         .foregroundStyle(.orange)
                         .lineLimit(1)
+                        .minimumScaleFactor(0.65)
+                        .fixedSize(horizontal: false, vertical: true)
+                        .layoutPriority(4)
                         .accessibilityLabel("警告：\(warning.message)")
                 }
             }
@@ -51,16 +56,16 @@ struct ExpandedUsageView: View {
     }
 
     private var header: some View {
-        HStack(alignment: .top) {
-            VStack(alignment: .leading, spacing: 1) {
-                Text("Codex 用量")
-                    .font(.headline)
-                Text(accountSubtitle)
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-                    .lineLimit(1)
-            }
-            Spacer()
+        HStack(spacing: 6) {
+            Text("Codex 用量")
+                .font(.headline)
+                .fixedSize()
+            Text(accountSubtitle)
+                .font(.caption)
+                .foregroundStyle(.secondary)
+                .lineLimit(1)
+                .minimumScaleFactor(0.7)
+            Spacer(minLength: 2)
             if store.isRefreshing { ProgressView().controlSize(.small) }
             Button(action: close) {
                 Image(systemName: "xmark.circle.fill")
@@ -69,34 +74,42 @@ struct ExpandedUsageView: View {
             .buttonStyle(.plain)
             .accessibilityLabel("收起")
         }
+        .fixedSize(horizontal: false, vertical: true)
+        .layoutPriority(2)
     }
 
     @ViewBuilder
     private var quotas: some View {
         if !store.snapshot.quotaWindows.isEmpty {
-            VStack(spacing: 6) {
+            VStack(spacing: 2) {
                 ForEach(store.snapshot.quotaWindows) { window in
-                    VStack(spacing: 2) {
+                    VStack(spacing: 1) {
                         HStack {
-                            Text(window.remainingTitle)
+                            Text(window.remainingTitle).lineLimit(1)
                             Spacer()
                             Text("\(window.remainingPercent, specifier: "%.0f")%")
                                 .monospacedDigit()
+                                .fixedSize()
                         }
-                        .font(.caption)
+                        .font(.caption2)
                         ProgressView(value: window.remainingPercent / 100)
-                            .controlSize(.mini)
+                            .progressViewStyle(.linear)
+                            .frame(height: 5)
                             .tint(window.remainingPercent <= 10 ? .orange : .blue)
                         if let resetsAt = window.resetsAt {
                             Text("重置：\(resetsAt, format: .dateTime.month().day().hour().minute())")
-                                .font(.system(size: 11))
+                                .font(.system(size: 10))
                                 .foregroundStyle(.secondary)
+                                .lineLimit(1)
+                                .minimumScaleFactor(0.8)
                                 .frame(maxWidth: .infinity, alignment: .trailing)
                         }
                     }
                     .accessibilityElement(children: .combine)
                 }
             }
+            .fixedSize(horizontal: false, vertical: true)
+            .layoutPriority(2)
         }
     }
 
@@ -110,7 +123,9 @@ struct ExpandedUsageView: View {
             }
         }
         .pickerStyle(.segmented)
-        .controlSize(.small)
+        .controlSize(.mini)
+        .frame(height: 20)
+        .layoutPriority(2)
     }
 
     private var totals: some View {
@@ -128,19 +143,28 @@ struct ExpandedUsageView: View {
     @ViewBuilder
     private var models: some View {
         if !store.snapshot.topModels.isEmpty {
-            VStack(alignment: .leading, spacing: 3) {
-                Text("常用模型").foregroundStyle(.secondary)
+            VStack(alignment: .leading, spacing: 1) {
+                Text("常用模型")
+                    .foregroundStyle(.secondary)
+                    .lineLimit(1)
                 ForEach(store.snapshot.topModels) { model in
                     HStack {
-                        Text(model.model).lineLimit(1)
+                        Text(model.model)
+                            .lineLimit(1)
+                            .minimumScaleFactor(0.7)
                         Spacer()
                         Text(model.fraction, format: .percent.precision(.fractionLength(0)))
                             .monospacedDigit()
+                            .fixedSize()
                     }
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.7)
                     .accessibilityElement(children: .combine)
                 }
             }
             .font(.caption)
+            .fixedSize(horizontal: false, vertical: true)
+            .layoutPriority(3)
         }
     }
 
@@ -153,6 +177,7 @@ struct ExpandedUsageView: View {
                     .font(.caption2)
                     .foregroundStyle(.orange)
                     .lineLimit(1)
+                    .minimumScaleFactor(0.75)
             }
         }
         .padding(.horizontal, 10)

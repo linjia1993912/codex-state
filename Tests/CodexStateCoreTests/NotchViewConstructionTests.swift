@@ -22,7 +22,10 @@ struct NotchViewConstructionTests {
         await store.refresh(force: true)
 
         #expect(store.snapshot.dailyUsage.first?.estimatedCostUSD != nil)
-        #expect(store.snapshot.dailyUsage.first?.unknownPriceModels == ["codex-auto-review"])
+        #expect(store.snapshot.dailyUsage.first?.unknownPriceModels.contains("codex-auto-review") == true)
+        #expect(store.snapshot.quotaWindows.count == 2)
+        #expect(store.snapshot.topModels.count == 4)
+        #expect((store.snapshot.visibleWarnings.first?.message.count ?? 0) > 60)
 
         _ = NotchRootView(store: store, presentation: .constant(.expanded))
     }
@@ -43,7 +46,25 @@ struct NotchViewConstructionTests {
     private func makeStore() -> UsageStore {
         let date = Date()
         return UsageStore(
-            remoteLoader: { CodexRemoteSnapshot(account: nil, quotaWindows: []) },
+            remoteLoader: {
+                CodexRemoteSnapshot(
+                    account: nil,
+                    quotaWindows: [
+                        QuotaWindow(
+                            id: "primary",
+                            title: "5 小时额度",
+                            usedPercent: 42,
+                            resetsAt: date.addingTimeInterval(3_600)
+                        ),
+                        QuotaWindow(
+                            id: "secondary",
+                            title: "每周额度",
+                            usedPercent: 75,
+                            resetsAt: date.addingTimeInterval(86_400)
+                        ),
+                    ]
+                )
+            },
             sessionLoader: {
                 SessionUsageResult(
                     contributions: [
@@ -56,6 +77,21 @@ struct NotchViewConstructionTests {
                             date: date,
                             model: "codex-auto-review",
                             tokens: TokenUsage(input: 500, cachedInput: 0, output: 50, total: 550)
+                        ),
+                        UsageContribution(
+                            date: date,
+                            model: "a-very-long-unknown-model-name-for-warning-layout-regression",
+                            tokens: TokenUsage(input: 900, cachedInput: 0, output: 0, total: 900)
+                        ),
+                        UsageContribution(
+                            date: date,
+                            model: "unknown-model-three",
+                            tokens: TokenUsage(input: 700, cachedInput: 0, output: 0, total: 700)
+                        ),
+                        UsageContribution(
+                            date: date,
+                            model: "unknown-model-four",
+                            tokens: TokenUsage(input: 600, cachedInput: 0, output: 0, total: 600)
                         ),
                     ],
                     malformedLineCount: 0
