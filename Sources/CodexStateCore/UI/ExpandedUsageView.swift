@@ -10,41 +10,56 @@ struct ExpandedUsageView: View {
     }
 
     private var totalCost: Decimal? {
-        store.snapshot.dailyUsage.reduce(Decimal.zero as Decimal?) { total, day in
-            guard let total, let cost = day.estimatedCostUSD else { return nil }
-            return total + cost
-        }
+        let knownCosts = store.snapshot.dailyUsage.compactMap(\.estimatedCostUSD)
+        return knownCosts.isEmpty ? nil : knownCosts.reduce(.zero, +)
+    }
+
+    private var unknownPriceModelCount: Int {
+        // 同一未知模型可能跨多天出现，范围提示按模型去重而不是累计出现次数。
+        Set(store.snapshot.dailyUsage.flatMap(\.unknownPriceModels)).count
+    }
+
+    private var accountSubtitle: String {
+        guard let account = store.snapshot.account else { return "未连接账号 · —" }
+        return "\(account.maskedEmail ?? "未知账号") · \(account.plan ?? "未知套餐")"
     }
 
     var body: some View {
-        VStack(spacing: 12) {
-            header
-            ScrollView {
-                VStack(alignment: .leading, spacing: 14) {
-                    account
-                    quotas
-                    rangePicker
-                    totals
-                    dailyBars
-                    models
-                    ForEach(Array(store.snapshot.visibleWarnings.enumerated()), id: \.offset) { _, warning in
-                        Label(warning.message, systemImage: "exclamationmark.triangle.fill")
-                            .foregroundStyle(.orange)
-                            .accessibilityLabel("警告：\(warning.message)")
-                    }
+        VStack(spacing: 0) {
+            // 连接带不承载内容，避免文字和控件落入物理刘海遮挡区。
+            Color.clear.frame(height: 32)
+            VStack(alignment: .leading, spacing: 10) {
+                header
+                quotas
+                rangePicker
+                totals
+                DailyTrendView(days: store.snapshot.dailyUsage)
+                models
+                if let warning = store.snapshot.visibleWarnings.first {
+                    Label(warning.message, systemImage: "exclamationmark.triangle.fill")
+                        .font(.caption2)
+                        .foregroundStyle(.orange)
+                        .lineLimit(1)
+                        .accessibilityLabel("警告：\(warning.message)")
                 }
-                .frame(maxWidth: .infinity, alignment: .leading)
             }
+            .padding(16)
+            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+            .foregroundStyle(.white)
+            .background(.black.opacity(0.94), in: RoundedRectangle(cornerRadius: 22))
         }
-        .padding(16)
-        .foregroundStyle(.white)
-        .background(.black.opacity(0.94), in: RoundedRectangle(cornerRadius: 22))
     }
 
     private var header: some View {
-        HStack {
-            Text("Codex 用量")
-                .font(.headline)
+        HStack(alignment: .top) {
+            VStack(alignment: .leading, spacing: 1) {
+                Text("Codex 用量")
+                    .font(.headline)
+                Text(accountSubtitle)
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                    .lineLimit(1)
+            }
             Spacer()
             if store.isRefreshing { ProgressView().controlSize(.small) }
             Button(action: close) {
@@ -56,34 +71,25 @@ struct ExpandedUsageView: View {
         }
     }
 
-    private var account: some View {
-        let account = store.snapshot.account
-        return HStack {
-            Label(account.map { $0.maskedEmail ?? "未知账号" } ?? "未连接账号", systemImage: "person.crop.circle")
-            Spacer()
-            Text(account.map { $0.plan ?? "未知套餐" } ?? "—")
-                .foregroundStyle(.secondary)
-        }
-        .accessibilityElement(children: .combine)
-    }
-
     @ViewBuilder
     private var quotas: some View {
         if !store.snapshot.quotaWindows.isEmpty {
-            VStack(spacing: 8) {
+            VStack(spacing: 6) {
                 ForEach(store.snapshot.quotaWindows) { window in
-                    VStack(spacing: 4) {
+                    VStack(spacing: 2) {
                         HStack {
-                            Text(window.title)
+                            Text(window.remainingTitle)
                             Spacer()
-                            Text("\(window.usedPercent, specifier: "%.0f")%")
+                            Text("\(window.remainingPercent, specifier: "%.0f")%")
                                 .monospacedDigit()
                         }
-                        ProgressView(value: min(max(window.usedPercent / 100, 0), 1))
-                            .tint(window.usedPercent >= 90 ? .orange : .blue)
+                        .font(.caption)
+                        ProgressView(value: window.remainingPercent / 100)
+                            .controlSize(.mini)
+                            .tint(window.remainingPercent <= 10 ? .orange : .blue)
                         if let resetsAt = window.resetsAt {
                             Text("重置：\(resetsAt, format: .dateTime.month().day().hour().minute())")
-                                .font(.caption)
+                                .font(.system(size: 11))
                                 .foregroundStyle(.secondary)
                                 .frame(maxWidth: .infinity, alignment: .trailing)
                         }
@@ -104,46 +110,26 @@ struct ExpandedUsageView: View {
             }
         }
         .pickerStyle(.segmented)
+        .controlSize(.small)
     }
 
     private var totals: some View {
-        HStack {
+        HStack(spacing: 8) {
             metric(title: "Tokens", value: totalTokens.formatted())
-            metric(title: "估算成本", value: totalCost.map { "$\($0)" } ?? "—")
+            metric(
+                title: "估算成本",
+                value: totalCost.map { "$\($0)" } ?? "—",
+                subtitle: unknownPriceModelCount > 0 ? "未含 \(unknownPriceModelCount) 个未知模型" : nil
+            )
         }
-    }
-
-    @ViewBuilder
-    private var dailyBars: some View {
-        let maximum = max(store.snapshot.dailyUsage.map(\.tokens.total).max() ?? 0, 1)
-        VStack(alignment: .leading, spacing: 6) {
-            Text("每日用量").font(.caption).foregroundStyle(.secondary)
-            ForEach(store.snapshot.dailyUsage) { day in
-                HStack {
-                    Text(day.date, format: .dateTime.month().day())
-                        .frame(width: 44, alignment: .leading)
-                    GeometryReader { geometry in
-                        Capsule()
-                            .fill(.blue)
-                            .frame(width: geometry.size.width * Double(day.tokens.total) / Double(maximum))
-                    }
-                    .frame(height: 7)
-                    Text(day.tokens.total.formatted())
-                        .font(.caption.monospacedDigit())
-                }
-                .accessibilityElement(children: .combine)
-            }
-            if store.snapshot.dailyUsage.isEmpty {
-                Text("暂无本地用量").foregroundStyle(.secondary)
-            }
-        }
+        .frame(height: 58)
     }
 
     @ViewBuilder
     private var models: some View {
         if !store.snapshot.topModels.isEmpty {
-            VStack(alignment: .leading, spacing: 5) {
-                Text("常用模型").font(.caption).foregroundStyle(.secondary)
+            VStack(alignment: .leading, spacing: 3) {
+                Text("常用模型").foregroundStyle(.secondary)
                 ForEach(store.snapshot.topModels) { model in
                     HStack {
                         Text(model.model).lineLimit(1)
@@ -154,15 +140,24 @@ struct ExpandedUsageView: View {
                     .accessibilityElement(children: .combine)
                 }
             }
+            .font(.caption)
         }
     }
 
-    private func metric(title: String, value: String) -> some View {
-        VStack(alignment: .leading) {
+    private func metric(title: String, value: String, subtitle: String? = nil) -> some View {
+        VStack(alignment: .leading, spacing: 1) {
             Text(title).font(.caption).foregroundStyle(.secondary)
-            Text(value).font(.title3.monospacedDigit())
+            Text(value).font(.headline.monospacedDigit())
+            if let subtitle {
+                Text(subtitle)
+                    .font(.caption2)
+                    .foregroundStyle(.orange)
+                    .lineLimit(1)
+            }
         }
-        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(.horizontal, 10)
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .leading)
+        .background(.white.opacity(0.07), in: RoundedRectangle(cornerRadius: 10))
         .accessibilityElement(children: .combine)
     }
 }
