@@ -1,6 +1,7 @@
 import Testing
 @testable import CodexStateCore
 
+@MainActor
 struct DailyTrendSelectionTests {
     @Test
     func selectionClampsToFirstAndLastBar() {
@@ -14,5 +15,16 @@ struct DailyTrendSelectionTests {
     func selectionReturnsNilForNoBarsOrNoWidth() {
         #expect(DailyTrendSelection.index(for: 20, width: 0, count: 7) == nil)
         #expect(DailyTrendSelection.index(for: 20, width: 300, count: 0) == nil)
+    }
+
+    @Test
+    func costTextKeepsUnknownModelDisclaimerWithoutKnownCost() {
+        let day = DailyUsage(
+            date: .now,
+            tokens: .zero,
+            unknownPriceModels: ["unknown-a", "unknown-b"]
+        )
+
+        #expect(DailyTrendView.costText(for: day) == "估算成本：—（未含 2 个未知模型）")
     }
 }

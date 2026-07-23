@@ -48,7 +48,7 @@ struct DailyTrendView: View {
                                 Capsule().stroke(.white.opacity(0.8), lineWidth: 1)
                             }
                         }
-                        .accessibilityLabel("\(day.date.formatted(date: .abbreviated, time: .omitted))，\(day.tokens.total.formatted()) Tokens，\(costText(for: day))")
+                        .accessibilityLabel("\(day.date.formatted(date: .abbreviated, time: .omitted))，\(day.tokens.total.formatted()) 令牌，\(Self.costText(for: day))")
                 }
             }
             .onContinuousHover { phase in
@@ -75,8 +75,8 @@ struct DailyTrendView: View {
     private func tooltip(for day: DailyUsage) -> some View {
         VStack(alignment: .leading, spacing: 2) {
             Text(day.date, format: .dateTime.month().day())
-            Text("\(day.tokens.total.formatted()) Tokens")
-            Text(costText(for: day))
+            Text("\(day.tokens.total.formatted()) 令牌")
+            Text(Self.costText(for: day))
         }
         .font(.caption.monospacedDigit())
         .padding(6)
@@ -85,12 +85,12 @@ struct DailyTrendView: View {
         .accessibilityHidden(true)
     }
 
-    private func costText(for day: DailyUsage) -> String {
-        guard let cost = day.estimatedCostUSD else { return "估算成本：—" }
-
+    static func costText(for day: DailyUsage) -> String {
         let omission = day.unknownPriceModels.isEmpty
             ? ""
             : "（未含 \(day.unknownPriceModels.count) 个未知模型）"
+        guard let cost = day.estimatedCostUSD else { return "估算成本：—\(omission)" }
+
         return "估算成本：$\(cost)\(omission)"
     }
 }
