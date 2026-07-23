@@ -51,6 +51,9 @@ struct DailyTrendView: View {
                         .accessibilityLabel("\(day.date.formatted(date: .abbreviated, time: .omitted))，\(day.tokens.total.formatted()) 令牌，\(Self.costText(for: day))")
                 }
             }
+            // 全零柱仍须占满图表区域，才能接收悬停并选择对应日期。
+            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .bottom)
+            .contentShape(Rectangle())
             .onContinuousHover { phase in
                 switch phase {
                 case let .active(location):
