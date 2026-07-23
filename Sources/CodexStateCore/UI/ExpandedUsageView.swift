@@ -98,7 +98,7 @@ struct ExpandedUsageView: View {
                             .tint(window.remainingPercent <= 10 ? .orange : .blue)
                         if let resetsAt = window.resetsAt {
                             Text("重置：\(resetsAt, format: .dateTime.month().day().hour().minute())")
-                                .font(.system(size: 10))
+                                .font(.system(size: 11))
                                 .foregroundStyle(.secondary)
                                 .lineLimit(1)
                                 .minimumScaleFactor(0.8)
