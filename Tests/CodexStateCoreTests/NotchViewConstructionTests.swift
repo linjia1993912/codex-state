@@ -21,8 +21,8 @@ struct NotchViewConstructionTests {
         let store = makeStore()
         await store.refresh(force: true)
 
-        #expect(store.snapshot.dailyUsage.first?.estimatedCostUSD != nil)
-        #expect(store.snapshot.dailyUsage.first?.unknownPriceModels.contains("codex-auto-review") == true)
+        #expect(store.snapshot.dailyUsage.last?.estimatedCostUSD != nil)
+        #expect(store.snapshot.dailyUsage.last?.unknownPriceModels.contains("codex-auto-review") == true)
         #expect(store.snapshot.quotaWindows.count == 2)
         #expect(store.snapshot.topModels.count == 4)
         #expect((store.snapshot.visibleWarnings.first?.message.count ?? 0) > 60)

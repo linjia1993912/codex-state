@@ -44,6 +44,44 @@ struct UsageStoreTests {
     }
 
     @Test
+    func weekRangeFillsMissingDaysWithZeroUsage() async {
+        let calendar = utcCalendar
+        let now = referenceDate
+        let firstDay = calendar.date(byAdding: .day, value: -6, to: calendar.startOfDay(for: now))!
+        let fourthDay = calendar.date(byAdding: .day, value: 3, to: firstDay)!
+        let contributions = [
+            UsageContribution(
+                date: firstDay.addingTimeInterval(3_600),
+                model: "known",
+                tokens: TokenUsage(input: 10, cachedInput: 0, output: 5, total: 15)
+            ),
+            UsageContribution(
+                date: fourthDay.addingTimeInterval(3_600),
+                model: "known",
+                tokens: TokenUsage(input: 20, cachedInput: 0, output: 10, total: 30)
+            ),
+        ]
+        let store = UsageStore(
+            remoteLoader: { CodexRemoteSnapshot(account: nil, quotaWindows: []) },
+            sessionLoader: { SessionUsageResult(contributions: contributions, malformedLineCount: 0) },
+            catalog: ModelPriceCatalog(prices: [:]),
+            calendar: calendar,
+            now: { now }
+        )
+
+        await store.refresh(force: true)
+
+        #expect(store.snapshot.dailyUsage.map(\.date) == (0..<7).map {
+            calendar.date(byAdding: .day, value: $0, to: firstDay)!
+        })
+        let missingDay = store.snapshot.dailyUsage[1]
+        #expect(missingDay.tokens == .zero)
+        #expect(missingDay.estimatedCostUSD == nil)
+        #expect(missingDay.tokensByModel.isEmpty)
+        #expect(missingDay.unknownPriceModels.isEmpty)
+    }
+
+    @Test
     func freshSnapshotSkipsSecondNonForcedRemoteRefresh() async {
         let loader = TestLoader()
         let now = referenceDate

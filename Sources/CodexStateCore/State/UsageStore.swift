@@ -117,12 +117,15 @@ public final class UsageStore {
             value: 1 - snapshot.selectedRange.rawValue,
             to: calendar.startOfDay(for: now())
         )!
-        let rangeEnd = calendar.date(byAdding: .day, value: 1, to: calendar.startOfDay(for: now()))!
-        let dailyUsage = SessionUsageRepository.aggregate(
+        let usageByDate = Dictionary(uniqueKeysWithValues: SessionUsageRepository.aggregate(
             contributions: contributions,
             calendar: calendar,
             catalog: catalog
-        ).filter { $0.date >= rangeStart && $0.date < rangeEnd }
+        ).filter { $0.date >= rangeStart }.map { ($0.date, $0) })
+        let dailyUsage = (0..<snapshot.selectedRange.rawValue).map { offset in
+            let date = calendar.date(byAdding: .day, value: offset, to: rangeStart)!
+            return usageByDate[date] ?? DailyUsage(date: date, tokens: .zero)
+        }
         let tokensByModel = dailyUsage.reduce(into: [String: TokenUsage]()) { totals, day in
             for (model, tokens) in day.tokensByModel {
                 totals[model, default: .zero] = totals[model, default: .zero] + tokens
