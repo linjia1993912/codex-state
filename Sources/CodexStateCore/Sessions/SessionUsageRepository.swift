@@ -67,17 +67,23 @@ public final class SessionUsageRepository: @unchecked Sendable {
 
         return grouped.map { date, tokensByModel in
             let tokens = tokensByModel.values.reduce(.zero, +)
-            let estimatedCostUSD = tokensByModel.reduce(Decimal.zero as Decimal?) { total, modelAndTokens in
-                guard let total, let cost = catalog.estimate(tokens: modelAndTokens.value, model: modelAndTokens.key) else {
-                    return nil
+            var knownCost = Decimal.zero
+            var knownCostCount = 0
+            var unknownPriceModels: [String] = []
+            for (model, modelTokens) in tokensByModel.sorted(by: { $0.key < $1.key }) {
+                if let cost = catalog.estimate(tokens: modelTokens, model: model) {
+                    knownCost += cost
+                    knownCostCount += 1
+                } else {
+                    unknownPriceModels.append(model)
                 }
-                return total + cost
             }
             return DailyUsage(
                 date: date,
                 tokens: tokens,
-                estimatedCostUSD: estimatedCostUSD,
-                tokensByModel: tokensByModel
+                estimatedCostUSD: knownCostCount == 0 ? nil : knownCost,
+                tokensByModel: tokensByModel,
+                unknownPriceModels: unknownPriceModels
             )
         }.sorted { $0.date < $1.date }
     }

@@ -103,6 +103,39 @@ struct SessionUsageRepositoryTests {
 
         #expect(dailyUsage.map(\.tokens.total) == [10, 20])
     }
+
+    @Test
+    func aggregateKeepsKnownCostWhenAnotherModelHasNoPrice() {
+        let day = Date(timeIntervalSince1970: 1_784_736_000)
+        let catalog = ModelPriceCatalog(prices: [
+            "known": ModelPrice(input: 1, cachedInput: 0.1, output: 2),
+        ])
+        let usage = SessionUsageRepository.aggregate(
+            contributions: [
+                UsageContribution(date: day, model: "known", tokens: .init(input: 1_000_000, cachedInput: 0, output: 0, total: 1_000_000)),
+                UsageContribution(date: day, model: "unknown", tokens: .init(input: 1, cachedInput: 0, output: 0, total: 1)),
+            ],
+            calendar: .current,
+            catalog: catalog
+        )
+
+        #expect(usage.count == 1)
+        #expect(usage[0].estimatedCostUSD == 1)
+        #expect(usage[0].unknownPriceModels == ["unknown"])
+    }
+
+    @Test
+    func aggregateLeavesCostNilWhenEveryModelIsUnknown() {
+        let day = Date(timeIntervalSince1970: 1_784_736_000)
+        let usage = SessionUsageRepository.aggregate(
+            contributions: [UsageContribution(date: day, model: "unknown", tokens: .init(input: 1, cachedInput: 0, output: 0, total: 1))],
+            calendar: .current,
+            catalog: ModelPriceCatalog(prices: [:])
+        )
+
+        #expect(usage[0].estimatedCostUSD == nil)
+        #expect(usage[0].unknownPriceModels == ["unknown"])
+    }
 }
 
 private enum RepositoryTestError: Error {

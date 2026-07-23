@@ -62,17 +62,20 @@ public struct DailyUsage: Codable, Equatable, Identifiable, Sendable {
     public let tokens: TokenUsage
     public let estimatedCostUSD: Decimal?
     public let tokensByModel: [String: TokenUsage]
+    public let unknownPriceModels: [String]
 
     public init(
         date: Date,
         tokens: TokenUsage,
         estimatedCostUSD: Decimal? = nil,
-        tokensByModel: [String: TokenUsage] = [:]
+        tokensByModel: [String: TokenUsage] = [:],
+        unknownPriceModels: [String] = []
     ) {
         self.date = date
         self.tokens = tokens
         self.estimatedCostUSD = estimatedCostUSD
         self.tokensByModel = tokensByModel
+        self.unknownPriceModels = unknownPriceModels
     }
 }
 
