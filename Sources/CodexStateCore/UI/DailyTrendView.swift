@@ -34,38 +34,7 @@ struct DailyTrendView: View {
 
     private var chart: some View {
         GeometryReader { geometry in
-            HStack(alignment: .bottom, spacing: 3) {
-                ForEach(Array(days.enumerated()), id: \.element.id) { index, day in
-                    Capsule()
-                        .fill(.blue)
-                        .frame(
-                            maxWidth: .infinity,
-                            maxHeight: geometry.size.height * CGFloat(day.tokens.total) / CGFloat(maximum),
-                            alignment: .bottom
-                        )
-                        .overlay {
-                            if selectedIndex == index {
-                                Capsule().stroke(.white.opacity(0.8), lineWidth: 1)
-                            }
-                        }
-                        .accessibilityLabel("\(day.date.formatted(date: .abbreviated, time: .omitted))，\(day.tokens.total.formatted()) 令牌，\(Self.costText(for: day))")
-                }
-            }
-            // 全零柱仍须占满图表区域，才能接收悬停并选择对应日期。
-            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .bottom)
-            .contentShape(Rectangle())
-            .onContinuousHover { phase in
-                switch phase {
-                case let .active(location):
-                    selectedIndex = DailyTrendSelection.index(
-                        for: location.x,
-                        width: geometry.size.width,
-                        count: days.count
-                    )
-                case .ended:
-                    selectedIndex = nil
-                }
-            }
+            chartBars(geometry: geometry)
         }
         .frame(height: 56)
         .overlay(alignment: .topLeading) {
@@ -75,10 +44,54 @@ struct DailyTrendView: View {
         }
     }
 
+    private func chartBars(geometry: GeometryProxy) -> some View {
+        // 固定柱宽上限，柱子多于可用宽度时自动收缩；少于时居中排列。
+        let spacing: CGFloat = 3
+        let count = max(days.count, 1)
+        let availableWidth = geometry.size.width - CGFloat(max(days.count - 1, 0)) * spacing
+        let barWidth = min(20.0, max(4.0, availableWidth / CGFloat(count)))
+
+        return HStack(alignment: .bottom, spacing: spacing) {
+            ForEach(Array(days.enumerated()), id: \.element.id) { index, day in
+                barView(day: day, index: index, barWidth: barWidth, maxHeight: geometry.size.height)
+            }
+        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .bottom)
+        .contentShape(Rectangle())
+        .onContinuousHover { phase in
+            switch phase {
+            case let .active(location):
+                selectedIndex = DailyTrendSelection.index(
+                    for: location.x,
+                    width: geometry.size.width,
+                    count: days.count
+                )
+            case .ended:
+                selectedIndex = nil
+            }
+        }
+    }
+
+    private func barView(day: DailyUsage, index: Int, barWidth: CGFloat, maxHeight: CGFloat) -> some View {
+        let barHeight = maxHeight * CGFloat(day.tokens.total) / CGFloat(maximum)
+        let label = "\(day.date.formatted(date: .abbreviated, time: .omitted))，\(UsageFormat.tokens(day.tokens.total)) 令牌，\(Self.costText(for: day))"
+
+        return Capsule()
+            .fill(.blue)
+            .frame(width: barWidth)
+            .frame(maxHeight: barHeight, alignment: .bottom)
+            .overlay {
+                if selectedIndex == index {
+                    Capsule().stroke(.white.opacity(0.8), lineWidth: 1)
+                }
+            }
+            .accessibilityLabel(label)
+    }
+
     private func tooltip(for day: DailyUsage) -> some View {
         VStack(alignment: .leading, spacing: 2) {
             Text(day.date, format: .dateTime.month().day())
-            Text("\(day.tokens.total.formatted()) 令牌")
+            Text("\(UsageFormat.tokens(day.tokens.total)) 令牌")
             Text(Self.costText(for: day))
         }
         .font(.caption.monospacedDigit())
@@ -94,6 +107,6 @@ struct DailyTrendView: View {
             : "（未含 \(day.unknownPriceModels.count) 个未知模型）"
         guard let cost = day.estimatedCostUSD else { return "估算成本：—\(omission)" }
 
-        return "估算成本：$\(cost)\(omission)"
+        return "估算成本：\(UsageFormat.cost(cost))\(omission)"
     }
 }

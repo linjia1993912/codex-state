@@ -27,10 +27,13 @@ struct CodexRPCClientTests {
             try FileManager.default.setAttributes([.posixPermissions: 0o755], ofItemAtPath: executable.path)
         }
 
+        // 注入排除 ChatGPT.app 的 fileManager，专注验证 nvm 解析逻辑，
+        // 不受本机是否安装 ChatGPT.app 影响。
         let executable = try CodexRPCClient.resolveExecutable(
             explicitPath: nil,
             environment: ["PATH": ""],
-            homeDirectory: home
+            homeDirectory: home,
+            fileManager: FileManagerExcludingChatGPTApp()
         )
 
         #expect(executable.path.hasSuffix("/.nvm/versions/node/v22.1.0/bin/codex"))
@@ -60,5 +63,14 @@ struct CodexRPCClientTests {
                 durationMinutes: 10_080
             )
         ])
+    }
+}
+
+/// 测试用 FileManager 子类：排除系统已安装的 ChatGPT.app 内 codex，
+/// 以便专注验证 nvm 解析逻辑，不受本机是否安装 ChatGPT.app 影响。
+private final class FileManagerExcludingChatGPTApp: FileManager {
+    override func isExecutableFile(atPath path: String) -> Bool {
+        if path.contains("ChatGPT.app") { return false }
+        return super.isExecutableFile(atPath: path)
     }
 }

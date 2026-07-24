@@ -4,16 +4,22 @@ import Testing
 
 @MainActor
 struct NotchViewConstructionTests {
+    private static let testNotch = NotchInfo(width: 200, height: 32, hasNotch: true)
+
+    private func makeModel(presentation: NotchPresentation = .collapsed) -> NotchViewModel {
+        NotchViewModel(presentation: presentation, notchInfo: Self.testNotch)
+    }
+
     @Test
     func rootViewCanBeConstructed() {
         let store = makeStore()
 
-        _ = NotchRootView(store: store, presentation: .constant(.collapsed))
+        _ = NotchRootView(store: store, model: makeModel())
     }
 
     @Test
     func expandedRootViewCanBeConstructedWithoutAccount() {
-        _ = NotchRootView(store: makeStore(), presentation: .constant(.expanded))
+        _ = NotchRootView(store: makeStore(), model: makeModel(presentation: .expanded))
     }
 
     @Test
@@ -27,7 +33,7 @@ struct NotchViewConstructionTests {
         #expect(store.snapshot.topModels.count == 4)
         #expect((store.snapshot.visibleWarnings.first?.message.count ?? 0) > 60)
 
-        _ = NotchRootView(store: store, presentation: .constant(.expanded))
+        _ = NotchRootView(store: store, model: makeModel(presentation: .expanded))
     }
 
     @Test

@@ -96,14 +96,26 @@ public final class CodexRPCClient: @unchecked Sendable {
 
     public func read() throws -> CodexRemoteSnapshot {
         let process = Process()
-        process.executableURL = try resolveExecutable()
-        process.arguments = ["app-server", "--listen", "stdio://"]
+        let execURL = try resolveExecutable()
+        process.executableURL = execURL
+        // 参考 CodexBar：必须以 read-only 沙箱 + untrusted 审批模式启动 app-server，
+        // 否则默认沙箱/审批策略会阻止 account/rateLimits 读取，导致额度窗口为空。
+        process.arguments = ["-s", "read-only", "-a", "untrusted", "app-server"]
+
+        // codex 可能是 node 脚本（nvm 安装），需要 node 在 PATH 中。
+        // GUI app 的 PATH 通常不包含 codex 所在目录，将其加入 PATH。
+        var env = ProcessInfo.processInfo.environment
+        let codexDir = execURL.deletingLastPathComponent().path
+        let currentPATH = env["PATH"] ?? ""
+        if !currentPATH.contains(codexDir) {
+            env["PATH"] = codexDir + ":" + currentPATH
+        }
+        process.environment = env
 
         let input = Pipe()
         let output = Pipe()
         process.standardInput = input
         process.standardOutput = output
-        process.standardError = FileHandle.nullDevice
 
         let reader = JSONRPCLineReader(handle: output.fileHandleForReading)
         defer {
@@ -112,19 +124,16 @@ public final class CodexRPCClient: @unchecked Sendable {
             if process.isRunning { process.terminate() }
         }
 
-        do {
-            try process.run()
-        } catch {
-            throw CodexRPCError.executableNotFound
-        }
+        try process.run()
 
-        // 初始化握手完成后必须通知服务端，随后才可读取账号；禁止刷新令牌以避免触发登录或网络请求。
+        // initialize 需要启动 codex 运行时，超时要比普通请求更长（参考 CodexBar: 8s init / 3s request）
         _ = try request(
             id: 1,
             method: "initialize",
             params: ["clientInfo": ["name": "codex-state", "version": "1.0"], "capabilities": [:]],
             input: input.fileHandleForWriting,
-            reader: reader
+            reader: reader,
+            timeout: max(timeout, 10)
         )
         input.fileHandleForWriting.write(try CodexRPCCodec.encodeInitializedNotification())
         let accountData = try request(
@@ -142,10 +151,9 @@ public final class CodexRPCClient: @unchecked Sendable {
             reader: reader
         )
 
-        return CodexRemoteSnapshot(
-            account: try CodexRPCCodec.decodeAccount(accountData),
-            quotaWindows: try CodexRPCCodec.decodeRateLimits(limitsData)
-        )
+        let account = try CodexRPCCodec.decodeAccount(accountData)
+        let quotaWindows = try CodexRPCCodec.decodeRateLimits(limitsData)
+        return CodexRemoteSnapshot(account: account, quotaWindows: quotaWindows)
     }
 
     private func resolveExecutable() throws -> URL {
@@ -170,12 +178,16 @@ public final class CodexRPCClient: @unchecked Sendable {
         ))?.sorted {
             $0.lastPathComponent.compare($1.lastPathComponent, options: .numeric) == .orderedDescending
         }.map { $0.appendingPathComponent("bin/codex").path } ?? []
+        // 优先使用 ChatGPT.app 内捆绑的 codex：它是独立 Mach-O 二进制，不依赖 node，
+        // 且已验证能正常初始化 sqlite 状态运行时（nvm 的 codex 从 GUI app 启动时 sqlite 初始化失败）。
+        let chatGPTAppCodex = "/Applications/ChatGPT.app/Contents/Resources/codex"
         let paths = explicitPath.map { [$0] } ?? (
-            (environment["PATH"] ?? "")
+            [chatGPTAppCodex]
+            + (environment["PATH"] ?? "")
                 .split(separator: ":")
                 .map { "\($0)/codex" }
-                + ["/opt/homebrew/bin/codex", "/usr/local/bin/codex"]
-                + nvmPaths
+            + ["/opt/homebrew/bin/codex", "/usr/local/bin/codex"]
+            + nvmPaths
         )
         guard let path = paths.first(where: fileManager.isExecutableFile(atPath:)) else {
             throw CodexRPCError.executableNotFound
@@ -188,8 +200,10 @@ public final class CodexRPCClient: @unchecked Sendable {
         method: String,
         params: [String: Any],
         input: FileHandle,
-        reader: JSONRPCLineReader
+        reader: JSONRPCLineReader,
+        timeout: TimeInterval? = nil
     ) throws -> Data {
+        let resolvedTimeout = timeout ?? self.timeout
         let response = reader.prepare(for: id)
         let request = ["jsonrpc": "2.0", "id": id, "method": method, "params": params] as [String: Any]
         guard let data = try? JSONSerialization.data(withJSONObject: request) else {
@@ -197,7 +211,7 @@ public final class CodexRPCClient: @unchecked Sendable {
         }
         input.write(data)
         input.write(Data([0x0A]))
-        guard response.wait(timeout: .now() + timeout) == .success, let data = reader.takeResponse(for: id) else {
+        guard response.wait(timeout: .now() + resolvedTimeout) == .success, let data = reader.takeResponse(for: id) else {
             reader.cancel(id: id)
             throw CodexRPCError.timedOut
         }

@@ -33,7 +33,7 @@ struct ScreenPlacementTests {
         #expect(metrics[0].title == "每周剩余")
         #expect(metrics[0].value == "58%")
         #expect(metrics[0].progress == 0.58)
-        #expect(metrics[1].value == "1000")
+        #expect(metrics[1].value == "1K")
     }
 
     @Test
@@ -55,10 +55,20 @@ struct ScreenPlacementTests {
 
     @MainActor
     @Test
-    func collapsedAndPeekShareTheHoverWindow() {
-        #expect(NotchPanelController.size(for: .collapsed) == CGSize(width: 300, height: 112))
-        #expect(NotchPanelController.size(for: .peek) == CGSize(width: 300, height: 112))
-        #expect(NotchPanelController.size(for: .expanded) == CGSize(width: 368, height: 430))
+    func windowSizeIsFixedAndLayoutSizesMonotonicallyIncrease() {
+        // 固定窗口尺寸：不随状态变化，避免 NSWindow frame 动画与 SwiftUI 动画不同步
+        #expect(NotchPanelController.windowSize == CGSize(width: 500, height: 360))
+
+        let layout = IslandLayout(notch: NotchInfo(width: 200, height: 32, hasNotch: true))
+        let compact = layout.compactSize
+        let peek = layout.peekSize
+        let expanded = IslandLayout.expandedSize
+
+        // 三态尺寸单调递增，从小到大丝滑过渡
+        #expect(compact.width < peek.width)
+        #expect(peek.width <= expanded.width)
+        #expect(compact.height < peek.height)
+        #expect(peek.height < expanded.height)
     }
 
     @Test
