@@ -14,11 +14,6 @@ struct ExpandedUsageView: View {
         return knownCosts.isEmpty ? nil : knownCosts.reduce(.zero, +)
     }
 
-    private var unknownPriceModelCount: Int {
-        // 同一未知模型可能跨多天出现，范围提示按模型去重而不是累计出现次数。
-        Set(store.snapshot.dailyUsage.flatMap(\.unknownPriceModels)).count
-    }
-
     private var accountSubtitle: String {
         guard let account = store.snapshot.account else { return "未连接账号 · —" }
         return "\(account.maskedEmail ?? "未知账号") · \(account.plan ?? "未知套餐")"
@@ -139,8 +134,7 @@ struct ExpandedUsageView: View {
                 metric(title: "Tokens", value: UsageFormat.tokens(totalTokens))
                 metric(
                     title: "估算成本",
-                    value: totalCost.map { UsageFormat.cost($0) } ?? "—",
-                    subtitle: unknownPriceModelCount > 0 ? "未含 \(unknownPriceModelCount) 个未知模型" : nil
+                    value: totalCost.map { UsageFormat.cost($0) } ?? "—"
                 )
             }
             // 最后统计刷新时间

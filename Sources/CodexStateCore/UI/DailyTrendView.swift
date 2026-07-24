@@ -102,11 +102,7 @@ struct DailyTrendView: View {
     }
 
     static func costText(for day: DailyUsage) -> String {
-        let omission = day.unknownPriceModels.isEmpty
-            ? ""
-            : "（未含 \(day.unknownPriceModels.count) 个未知模型）"
-        guard let cost = day.estimatedCostUSD else { return "估算成本：—\(omission)" }
-
-        return "估算成本：\(UsageFormat.cost(cost))\(omission)"
+        guard let cost = day.estimatedCostUSD else { return "估算成本：—" }
+        return "估算成本：\(UsageFormat.cost(cost))"
     }
 }
