@@ -1,17 +1,14 @@
 # codex-state
 
-Codex State 是一个原生 macOS 刘海用量工具。悬停查看剩余额度或今日统计；展开面板提供单屏趋势、模型占比与部分估算成本，未知价格模型会明确标注未计入。也可用 `⌥⌘U` 切换完整面板。
+Codex State 是一个原生 macOS 系统ChatGPT用量工具。悬停查看剩余周额度或今日统计；展开面板提供按天统计用量情况、模型占比与部分估算成本，未知价格模型会明确标注未计入。也可用 `⌥⌘U` 切换完整面板。
 
 ## 效果演示
 
-https://github.com/linjia1993912/codex-state/blob/develop/docs/notch-demo.mov
-
-> 也可直接下载查看：[docs/notch-demo.mov](docs/notch-demo.mov)
 
 ## 特点
 
 - **与刘海融合**：黑色 squircle 胶囊贴合物理刘海，右侧叠加 ChatGPT 六瓣花结图标与钴色光晕扫描，读作“ChatGPT 在线”。
-- **三态丝滑过渡**：compact / peek / expanded 三态由 spring 动画驱动，形状先变、内容后现，展开/收起无残影；peek 与 expanded 共享 380pt 宽度，避免宽度跳变。
+- **三态丝滑过渡**：compact / peek / expanded 三态由 spring 动画驱动，形状先变、内容后现。
 - **悬停即看**：光标进入胶囊区域自动展开 peek，展示周剩余额度与今日 Token；移出后自动收起，不打断工作流。
 - **完整用量面板**：展开后展示单屏每日趋势、模型占比和估算成本，未知价格模型明确标注未计入。
 - **纯本机数据**：通过本机 Codex `app-server` 读取账号与额度，仅扫描本地 JSONL 聚合 Token，不保存提示词或回复正文。
@@ -50,14 +47,3 @@ open build/CodexState.app
 - 价格表更新日期：2026-07-22
 - 官方价格来源：[OpenAI API Pricing](https://developers.openai.com/api/docs/pricing)
 - 仓库价格表：`Sources/CodexStateCore/Pricing/Resources/ModelPrices.json`
-
-## 手工图形验收
-
-以下项目需要在真实图形会话和对应硬件上执行，本次自动验证不代表它们已通过：
-
-- [ ] 带刘海屏：静默态在顶部居中并贴合物理刘海。
-- [ ] Hover：进入后延迟显示两项摘要，移出后延迟收起。
-- [ ] 快捷键：`⌥⌘U` 可切换完整面板，被占用时应用仍可用。
-- [ ] 无刘海屏：外接或主屏顶部居中显示黑色胶囊。
-- [ ] 减少动态效果：开启系统选项后不执行尺寸动画。
-- [ ] VoiceOver：摘要、数值、警告和收起按钮可正确朗读。
