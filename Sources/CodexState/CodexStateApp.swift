@@ -187,7 +187,13 @@ private final class AppDelegate: NSObject, NSApplicationDelegate {
 
     private func startRefreshing(store: UsageStore) {
         refreshTask = Task { [weak store] in
-            await store?.refresh(force: true)
+            // 首次加载失败时短间隔重试：codex app-server 冷启动偶发超过 initialize 超时，
+            // 若不重试则用户需手动退出重开才能看到数据。成功后转入正常 5 分钟节律。
+            while !Task.isCancelled {
+                await store?.refresh(force: true)
+                if let snapshot = store?.snapshot, !snapshot.isStale { break }
+                try? await Task.sleep(for: .seconds(10))
+            }
             while !Task.isCancelled {
                 try? await Task.sleep(for: .seconds(300))
                 guard !Task.isCancelled else { break }

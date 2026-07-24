@@ -4,7 +4,6 @@ import SwiftUI
 struct ExpandedUsageView: View {
     @Bindable var store: UsageStore
     let notchHeight: CGFloat
-    let close: () -> Void
 
     private var totalTokens: Int64 {
         store.snapshot.dailyUsage.reduce(0) { $0 + $1.tokens.total }
@@ -72,12 +71,6 @@ struct ExpandedUsageView: View {
                 .minimumScaleFactor(0.7)
             Spacer(minLength: 2)
             if store.isRefreshing { ProgressView().controlSize(.small) }
-            Button(action: close) {
-                Image(systemName: "xmark.circle.fill")
-                    .font(.title3)
-            }
-            .buttonStyle(.plain)
-            .accessibilityLabel("收起")
         }
         .fixedSize(horizontal: false, vertical: true)
         .layoutPriority(2)
