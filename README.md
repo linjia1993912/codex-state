@@ -1,16 +1,18 @@
 # codex-state
 
-Codex State 是一个原生 macOS 系统ChatGPT用量工具。悬停查看剩余周额度或今日统计；展开面板提供按天统计用量情况、模型占比与部分估算成本，未知价格模型会明确标注未计入。也可用 `⌥⌘U` 切换完整面板。
+Codex State 是一个原生 macOS 监控ChatGPT用量工具。模拟IPhone灵动岛效果，悬停查看剩余周额度和今日统计；展开面板提供按天统计用量情况、模型占比与部分估算成本，未知价格模型会明确标注未计入。也可用 `⌥⌘U` 切换完整面板。
 
 ## 效果演示
+
+https://github.com/user-attachments/assets/e136c1a6-bc6f-487f-af30-b2dbc4bbde5f
 
 
 ## 特点
 
-- **与刘海融合**：黑色 squircle 胶囊贴合物理刘海，右侧叠加 ChatGPT 六瓣花结图标与钴色光晕扫描，读作“ChatGPT 在线”。
+- **与刘海融合的灵动岛**：黑色 squircle 胶囊贴合物理刘海，右侧叠加 ChatGPT 六瓣花结图标与钴色光晕扫描，读作“ChatGPT 在线”。
 - **三态丝滑过渡**：compact / peek / expanded 三态由 spring 动画驱动，形状先变、内容后现。
 - **悬停即看**：光标进入胶囊区域自动展开 peek，展示周剩余额度与今日 Token；移出后自动收起，不打断工作流。
-- **完整用量面板**：展开后展示单屏每日趋势、模型占比和估算成本，未知价格模型明确标注未计入。
+- **完整用量面板**：展开后可按天统计具体用量情况、模型占比和估算成本，未知价格模型明确标注未计入。
 - **纯本机数据**：通过本机 Codex `app-server` 读取账号与额度，仅扫描本地 JSONL 聚合 Token，不保存提示词或回复正文。
 - **零第三方依赖**：仅使用 Swift 标准库、Foundation、SwiftUI、AppKit 与 Carbon，应用与状态栏图标均为纯代码绘制。
 - **全局快捷键**：`⌥⌘U` 随时切换完整面板，被占用时应用仍可用。
@@ -19,7 +21,8 @@ Codex State 是一个原生 macOS 系统ChatGPT用量工具。悬停查看剩余
 ## 要求
 
 - macOS 14 或更高版本。
-- 已安装 Codex CLI，并通过 `codex login status` 确认已登录。Codex State 不会代替用户登录。
+- 目前仅适用于带有刘海的MacBook。
+- 已安装 Codex CLI 或者 ChatGPT，确认已登录。Codex State 不会代替用户登录。
 
 ## 开发与打包
 
