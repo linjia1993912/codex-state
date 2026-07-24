@@ -48,7 +48,7 @@ private final class StatusBarController {
     private func showMenu() {
         let menu = NSMenu()
         let quitItem = NSMenuItem(
-            title: "退出 Codex State",
+            title: "退出",
             action: #selector(NSApplication.terminate(_:)),
             keyEquivalent: "q"
         )

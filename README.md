@@ -34,6 +34,18 @@ open build/CodexState.app
 
 打包脚本仅使用 Xcode Command Line Tools 和 macOS 系统命令：它会执行 release 构建、组装 `build/CodexState.app`，并使用 ad-hoc 签名，不下载依赖。
 
+## 分发与安装
+
+应用为 ad-hoc 签名（无 Apple Developer ID），通过 AirDrop / 下载 / 复制传到其他 Mac 时，Gatekeeper 会因隔离属性拒绝双击启动，提示“应用程序无法打开”。
+
+**安装方式**：将 `CodexState.app` 拖入 `/Applications` 后，在终端执行：
+
+```bash
+xattr -cr /Applications/CodexState.app
+```
+
+移除隔离属性后即可双击运行。该命令只需执行一次，应用后续更新覆盖时若再次出现隔离属性，重新执行即可。
+
 ## 数据范围与隐私
 
 - 应用启动本机 Codex `app-server` 子进程，仅读取已登录账号和当前额度；请求不刷新登录令牌。
