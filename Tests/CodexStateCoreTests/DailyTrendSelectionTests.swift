@@ -18,13 +18,13 @@ struct DailyTrendSelectionTests {
     }
 
     @Test
-    func costTextKeepsUnknownModelDisclaimerWithoutKnownCost() {
+    func costTextOmitsUnknownModelDisclaimer() {
         let day = DailyUsage(
             date: .now,
             tokens: .zero,
             unknownPriceModels: ["unknown-a", "unknown-b"]
         )
 
-        #expect(DailyTrendView.costText(for: day) == "估算成本：—（未含 2 个未知模型）")
+        #expect(DailyTrendView.costText(for: day) == "估算成本：—")
     }
 }

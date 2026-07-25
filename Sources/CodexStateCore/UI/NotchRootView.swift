@@ -57,7 +57,7 @@ public struct NotchRootView: View {
                     ExpandedUsageView(
                         store: store,
                         notchHeight: notchInfo.height
-                    ) { setPresentation(.collapsed) }
+                    )
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
                     .opacity(contentVisible ? 1 : 0)
                     .offset(y: contentVisible ? 0 : -8)
@@ -66,12 +66,8 @@ public struct NotchRootView: View {
             }
             .frame(width: currentSize.width, height: currentSize.height)
             .overlay(alignment: .topTrailing) {
-                // ChatGPT 图标固定在 compact 右边缘位置，所有状态保持一致。
-                // 展开后 ZStack 变宽，通过额外 trailing padding 抵消右边缘的位移，
-                // 让图标锚点不随宽度变化滑动，避免视觉上产生"向左展开"的错觉。
-                let extraTrailing = max(0, (currentSize.width - layout.compactSize.width) / 2)
+                // ChatGPT 图标锚定在胶囊右边缘，随宽度变化跟随右边缘滑动。
                 ChatGPTLogoOverlay(notchHeight: notchInfo.height)
-                    .padding(.trailing, extraTrailing)
             }
             .contentShape(IslandShape())
             .onTapGesture {
@@ -110,8 +106,10 @@ public struct NotchRootView: View {
     /// 收起时内容先渐出，形状后收起。
     private func handlePresentationChange(from oldValue: NotchPresentation, to newValue: NotchPresentation) {
         if newValue == .expanded {
-            // 展开：先隐藏旧内容，形状变大后新内容 220ms 渐入
-            withAnimation(.easeOut(duration: 0.08)) { contentVisible = false }
+            // 展开：立即隐藏旧内容（无动画），避免 ExpandedUsageView 的背景在切换瞬间
+            // 以 contentVisible=true 全不透明渲染一帧形成 RoundedRectangle 残影；
+            // 形状变大后 220ms 渐入新内容
+            contentVisible = false
             DispatchQueue.main.asyncAfter(deadline: .now() + 0.22) {
                 guard model.presentation == .expanded else { return }
                 withAnimation(.easeOut(duration: 0.18)) {
@@ -138,7 +136,7 @@ public struct NotchRootView: View {
 
 // MARK: - ChatGPTLogoOverlay
 
-/// 右侧 ChatGPT 图标叠加：固定在 compact 右边缘位置。
+/// 右侧 ChatGPT 图标叠加：锚定在胶囊右边缘，随宽度变化跟随右边缘滑动。
 /// 使用 stroke 而非 fill 保持花瓣间的负空间，参考 OpenAI 标志的六瓣花结。
 private struct ChatGPTLogoOverlay: View {
     let notchHeight: CGFloat

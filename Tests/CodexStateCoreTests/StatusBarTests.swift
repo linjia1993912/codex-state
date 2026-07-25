@@ -6,7 +6,7 @@ import Foundation
 func statusBarMenuHasQuitItem() {
     let menu = NSMenu()
     let quitItem = NSMenuItem(
-        title: "退出 Codex State",
+        title: "退出",
         action: #selector(NSApplication.terminate(_:)),
         keyEquivalent: "q"
     )
@@ -14,7 +14,7 @@ func statusBarMenuHasQuitItem() {
     menu.addItem(quitItem)
 
     #expect(menu.items.count == 1)
-    #expect(menu.items.first?.title == "退出 Codex State")
+    #expect(menu.items.first?.title == "退出")
     #expect(menu.items.first?.keyEquivalent == "q")
 }
 

@@ -20,6 +20,9 @@ struct GlowLayer: View {
                             .white.opacity(isExpanded ? 0.12 : 0),
                             lineWidth: 0.5
                         )
+                        // 顶部贴屏幕物理边缘，裁掉顶部描边避免形成可见边框；
+                        // 底部与两侧描边保留
+                        .mask(Rectangle().padding(.top, 1))
                         .animation(decorAnimation, value: isExpanded)
                 }
                 .shadow(color: IslandColor.cobalt.opacity(0.35), radius: 14, y: 0)
