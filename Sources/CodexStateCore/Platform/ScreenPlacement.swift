@@ -14,6 +14,8 @@ public enum NotchPresentation: Equatable, Sendable {
 @Observable
 public final class NotchViewModel {
     public var presentation: NotchPresentation = .collapsed
+    /// 收起时先让内容淡出，避免形态缩小时数据仍停留在面板内形成残影。
+    public var isClosing = false
     public var notchInfo: NotchInfo
 
     public init(presentation: NotchPresentation = .collapsed, notchInfo: NotchInfo) {

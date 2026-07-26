@@ -53,8 +53,8 @@ public struct NotchRootView: View {
                         notchHeight: notchInfo.height
                     )
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
-                    .opacity(contentVisible ? 1 : 0)
-                    .allowsHitTesting(contentVisible)
+                    .opacity(contentVisible && !model.isClosing ? 1 : 0)
+                    .allowsHitTesting(contentVisible && !model.isClosing)
                     .transition(.opacity)
                 } else if presentation == .expanded {
                     ExpandedUsageView(
@@ -62,9 +62,9 @@ public struct NotchRootView: View {
                         notchHeight: notchInfo.height
                     )
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
-                    .opacity(contentVisible ? 1 : 0)
-                    .offset(y: contentVisible ? 0 : -8)
-                    .allowsHitTesting(contentVisible)
+                    .opacity(contentVisible && !model.isClosing ? 1 : 0)
+                    .offset(y: contentVisible && !model.isClosing ? 0 : -8)
+                    .allowsHitTesting(contentVisible && !model.isClosing)
                     .transition(.opacity)
                 }
             }
@@ -99,6 +99,8 @@ public struct NotchRootView: View {
     /// 展开用 openMorph（略弹，形态变化更明显）。
     private func setPresentation(_ value: NotchPresentation) {
         guard presentation != value else { return }
+        // 从 collapsed 直接点击展开时，也需解除上一次收起留下的内容隐藏标记。
+        if value != .collapsed { model.isClosing = false }
         let anim = value == .collapsed ? closeMorph : openMorph
         withAnimation(anim) {
             model.presentation = value

@@ -24,6 +24,7 @@ public final class NotchPanelController: NSObject {
     private var trackingTimer: Timer?
     private var hasSeenMouseEvent = false
     private var isMouseInsideIsland = false
+    private var isCollapsePending = false
     // 启动冷却期标志：应用刚启动时光标可能在胶囊区域，避免立即展开 peek。
     // show() 后延迟启用 hover 检测，保证用户感知到 collapsed 默认状态。
     private var hoverDetectionEnabled = false
@@ -106,8 +107,46 @@ public final class NotchPanelController: NSObject {
 
     private func setPresentation(_ value: NotchPresentation) {
         guard model.presentation != value else { return }
+        if value == .collapsed {
+            beginCollapse()
+            return
+        }
+
+        // 取消尚未完成的收起，避免快速切换时旧回调覆盖新的展示状态。
+        isCollapsePending = false
+        model.isClosing = false
         withAnimation(transitionAnimation(for: value)) {
             model.presentation = value
+        }
+        updateMouseEvents()
+        updateClickMonitors()
+    }
+
+    /// 关闭采用两段式：内容先淡出，再启动形态收缩，避免数据跟随缩小的面板产生残影。
+    private func beginCollapse() {
+        guard !isCollapsePending else { return }
+        isCollapsePending = true
+
+        let reduceMotion = NSWorkspace.shared.accessibilityDisplayShouldReduceMotion
+        withAnimation(reduceMotion ? nil : .easeOut(duration: 0.08)) {
+            model.isClosing = true
+        }
+
+        if reduceMotion {
+            finishCollapse()
+        } else {
+            Task { @MainActor [weak self] in
+                try? await Task.sleep(for: .milliseconds(80))
+                self?.finishCollapse()
+            }
+        }
+    }
+
+    private func finishCollapse() {
+        guard isCollapsePending else { return }
+        isCollapsePending = false
+        withAnimation(transitionAnimation(for: .collapsed)) {
+            model.presentation = .collapsed
         }
         updateMouseEvents()
         updateClickMonitors()
