@@ -3,8 +3,9 @@ import Testing
 
 struct UsageFormatTests {
     @Test
-    func tokensUseYiOnlyAboveOneHundredMillion() {
-        #expect(UsageFormat.tokens(100_000_000) == "100.0M")
-        #expect(UsageFormat.tokens(543_300_000) == "5.43亿")
+    func tokensUseYiAboveNinetyNinePointNineMillion() {
+        #expect(UsageFormat.tokens(99_900_000) == "99.9M")
+        #expect(UsageFormat.tokens(99_900_001) == "1.0亿")
+        #expect(UsageFormat.tokens(543_300_000) == "5.4亿")
     }
 }
