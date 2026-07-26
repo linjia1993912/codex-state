@@ -107,7 +107,7 @@ public struct IslandLayout: Sendable {
     /// expanded 面板固定宽度。
     public static let expandedWidth: CGFloat = 380
     /// expanded 面板固定高度。
-    public static let expandedHeight: CGFloat = 360
+    public static let expandedHeight: CGFloat = 400
     /// expanded 面板固定尺寸。
     public static var expandedSize: CGSize { CGSize(width: expandedWidth, height: expandedHeight) }
 

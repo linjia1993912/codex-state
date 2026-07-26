@@ -52,7 +52,7 @@ enum AppIconRenderer {
         let s = size / 1024.0
 
         // 脸部
-        let face = NSBezierPath(ovalIn: NSRect(x: 312 * s, y: 410 * s, width: 400 * s, height: 340 * s))
+        let face = NSBezierPath(ovalIn: NSRect(x: 312 * s, y: 410 * s, width: 450 * s, height: 340 * s))
         NSColor(red: 1.0, green: 0.96, blue: 0.90, alpha: 1.0).setFill()
         face.fill()
 

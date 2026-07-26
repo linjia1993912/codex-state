@@ -118,10 +118,10 @@ public final class UsageStore {
             to: calendar.startOfDay(for: now())
         )!
         let usageByDate = Dictionary(uniqueKeysWithValues: SessionUsageRepository.aggregate(
-            contributions: contributions,
+            contributions: contributions.filter { $0.date >= rangeStart },
             calendar: calendar,
             catalog: catalog
-        ).filter { $0.date >= rangeStart }.map { ($0.date, $0) })
+        ).map { ($0.date, $0) })
         let dailyUsage = (0..<snapshot.selectedRange.rawValue).map { offset in
             let date = calendar.date(byAdding: .day, value: offset, to: rangeStart)!
             return usageByDate[date] ?? DailyUsage(date: date, tokens: .zero)

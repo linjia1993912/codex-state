@@ -27,6 +27,7 @@ public final class SessionUsageRepository: @unchecked Sendable {
         _ = calendar
         let cached = loadCache()
         var files: [String: CachedFile] = [:]
+        var cacheChanged = false
         let discovered = sessionFiles(home: home)
         var failedFileCount = discovered.resourceFailureCount
 
@@ -34,9 +35,13 @@ public final class SessionUsageRepository: @unchecked Sendable {
             do {
                 let fingerprint = try FileFingerprint(url: url)
                 let path = url.standardizedFileURL.path
-                let result = cached.files[path]?.fingerprint == fingerprint
-                    ? cached.files[path]!.result
-                    : try parser(Data(contentsOf: url))
+                let result: ParseResult
+                if let cachedFile = cached.files[path], cachedFile.fingerprint == fingerprint {
+                    result = cachedFile.result
+                } else {
+                    result = try parser(Data(contentsOf: url))
+                    cacheChanged = true
+                }
                 files[path] = CachedFile(fingerprint: fingerprint, result: result)
             } catch {
                 // 单个日志不可读或不可解析时只标记该文件，不能抹掉其他日志的有效贡献。
@@ -44,8 +49,10 @@ public final class SessionUsageRepository: @unchecked Sendable {
             }
         }
 
-        // 缓存只是性能优化，写入失败不能阻断本次已经得到的用量结果。
-        try? saveCache(Cache(files: files))
+        // 缓存只是性能优化；所有文件未变时跳过整份编码和原子替换写入。
+        if cacheChanged || cached.files.count != files.count {
+            try? saveCache(Cache(files: files))
+        }
         let results = files.keys.sorted().compactMap { files[$0]?.result }
         return SessionUsageResult(
             contributions: results.flatMap(\.contributions),

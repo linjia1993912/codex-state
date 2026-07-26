@@ -45,6 +45,12 @@ private final class StatusBarController {
         }
     }
 
+    /// 将状态栏按钮坐标转换到屏幕坐标，供详情面板排除这次外部点击。
+    var containsMouseLocation: Bool {
+        guard let button = statusItem.button, let window = button.window else { return false }
+        return window.convertToScreen(button.convert(button.bounds, to: nil)).contains(NSEvent.mouseLocation)
+    }
+
     private func showMenu() {
         let menu = NSMenu()
         let quitItem = NSMenuItem(
@@ -169,9 +175,13 @@ private final class AppDelegate: NSObject, NSApplicationDelegate {
             self.panelController = panelController
             hotKey = GlobalHotKey.registerIfAvailable { [weak panelController] in panelController?.toggleExpanded() }
             panelController.show()
-            statusBarController = StatusBarController { [weak panelController] in
+            let statusBarController = StatusBarController { [weak panelController] in
                 panelController?.showExpanded()
             }
+            panelController.setOutsideClickExclusion { [weak statusBarController] in
+                statusBarController?.containsMouseLocation ?? false
+            }
+            self.statusBarController = statusBarController
             startRefreshing(store: store)
         } catch {
             NSApp.presentError(error)

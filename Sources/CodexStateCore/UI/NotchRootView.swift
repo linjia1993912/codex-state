@@ -14,6 +14,8 @@ public struct NotchRootView: View {
 
     /// 内容可见性：peek/expanded 内容在形状变化后渐入，收起时先渐出再缩形
     @State private var contentVisible = false
+    /// 只让最新一次状态切换拥有延迟渐入权，防止快速掠过胶囊时旧回调抢回内容。
+    @State private var contentTransitionID = UUID()
 
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
@@ -28,12 +30,12 @@ public struct NotchRootView: View {
     private var currentSize: CGSize { layout.size(for: presentation) }
 
     /// 形态展开弹簧（参考 codex-island .openMorph）
-    private var openMorph: Animation {
-        .spring(response: 0.42, dampingFraction: 0.82)
+    private var openMorph: Animation? {
+        reduceMotion ? nil : .spring(response: 0.42, dampingFraction: 0.82)
     }
     /// 形态收起弹簧（参考 codex-island .closeMorph）
-    private var closeMorph: Animation {
-        .spring(response: 0.30, dampingFraction: 0.88)
+    private var closeMorph: Animation? {
+        reduceMotion ? nil : .spring(response: 0.30, dampingFraction: 0.88)
     }
 
     public var body: some View {
@@ -53,6 +55,7 @@ public struct NotchRootView: View {
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
                     .opacity(contentVisible ? 1 : 0)
                     .allowsHitTesting(contentVisible)
+                    .transition(.opacity)
                 } else if presentation == .expanded {
                     ExpandedUsageView(
                         store: store,
@@ -62,6 +65,7 @@ public struct NotchRootView: View {
                     .opacity(contentVisible ? 1 : 0)
                     .offset(y: contentVisible ? 0 : -8)
                     .allowsHitTesting(contentVisible)
+                    .transition(.opacity)
                 }
             }
             .frame(width: currentSize.width, height: currentSize.height)
@@ -104,30 +108,33 @@ public struct NotchRootView: View {
     /// presentation 变化时驱动 contentVisible 交错动画（参考 codex-island onHover/onTapGesture）。
     /// 形状先变（由 setPresentation 中的 withAnimation 驱动），内容延迟渐入；
     /// 收起时内容先渐出，形状后收起。
-    private func handlePresentationChange(from oldValue: NotchPresentation, to newValue: NotchPresentation) {
+    private func handlePresentationChange(from _: NotchPresentation, to newValue: NotchPresentation) {
+        let transitionID = UUID()
+        contentTransitionID = transitionID
+
         if newValue == .expanded {
             // 展开：立即隐藏旧内容（无动画），避免 ExpandedUsageView 的背景在切换瞬间
             // 以 contentVisible=true 全不透明渲染一帧形成 RoundedRectangle 残影；
             // 形状变大后 220ms 渐入新内容
             contentVisible = false
             DispatchQueue.main.asyncAfter(deadline: .now() + 0.22) {
-                guard model.presentation == .expanded else { return }
-                withAnimation(.easeOut(duration: 0.18)) {
+                guard model.presentation == .expanded, contentTransitionID == transitionID else { return }
+                withAnimation(reduceMotion ? nil : .easeOut(duration: 0.18)) {
                     contentVisible = true
                 }
             }
         } else if newValue == .peek {
             // peek：先隐藏旧内容，形状变化后新内容 60ms 渐入
-            withAnimation(.easeOut(duration: 0.08)) { contentVisible = false }
+            withAnimation(reduceMotion ? nil : .easeOut(duration: 0.08)) { contentVisible = false }
             DispatchQueue.main.asyncAfter(deadline: .now() + 0.06) {
-                guard model.presentation == .peek else { return }
-                withAnimation(.easeOut(duration: 0.18)) {
+                guard model.presentation == .peek, contentTransitionID == transitionID else { return }
+                withAnimation(reduceMotion ? nil : .easeOut(duration: 0.18)) {
                     contentVisible = true
                 }
             }
         } else {
             // collapsed：内容先渐出
-            withAnimation(.easeOut(duration: 0.08)) {
+            withAnimation(reduceMotion ? nil : .easeOut(duration: 0.08)) {
                 contentVisible = false
             }
         }
