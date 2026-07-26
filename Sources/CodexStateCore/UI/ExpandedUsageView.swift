@@ -21,18 +21,17 @@ struct ExpandedUsageView: View {
 
     private var refreshedAtText: String {
         guard let refreshedAt = store.snapshot.refreshedAt else { return "—" }
-        return refreshedAt.formatted(date: .abbreviated, time: .shortened)
+        return refreshedAt.formatted(date: .omitted, time: .shortened)
     }
 
     var body: some View {
         VStack(spacing: 0) {
             // 连接带不承载内容，避免文字和控件落入物理刘海遮挡区。
             Color.clear.frame(height: notchHeight)
-            VStack(alignment: .leading, spacing: 14) {
+            VStack(alignment: .leading, spacing: 12) {
                 header
                 quotas
-                rangePicker
-                totals
+                usageOverview
                 models
                 if let warning = store.snapshot.visibleWarnings.first {
                     Label(warning.message, systemImage: "exclamationmark.triangle.fill")
@@ -50,151 +49,187 @@ struct ExpandedUsageView: View {
             .padding(.bottom, 16)
             .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
             .foregroundStyle(.white)
-            .background(.black.opacity(0.94), in: RoundedRectangle(cornerRadius: 22))
         }
     }
 
     private var header: some View {
-        HStack(spacing: 6) {
-            Text("Codex 用量")
-                .font(.headline)
-                .fixedSize()
+        VStack(alignment: .leading, spacing: 3) {
+            HStack(spacing: 8) {
+                Text("Codex 用量")
+                    .font(.headline)
+                Spacer(minLength: 2)
+                if store.isRefreshing {
+                    ProgressView().controlSize(.small)
+                } else {
+                    Label("已同步 · \(refreshedAtText)", systemImage: "checkmark.circle.fill")
+                        .font(.caption2)
+                        .foregroundStyle(.green)
+                }
+            }
             Text(accountSubtitle)
                 .font(.caption)
                 .foregroundStyle(.secondary)
                 .lineLimit(1)
                 .minimumScaleFactor(0.7)
-            Spacer(minLength: 2)
-            if store.isRefreshing { ProgressView().controlSize(.small) }
         }
         .fixedSize(horizontal: false, vertical: true)
         .layoutPriority(2)
     }
 
-    // 展示所有额度窗口（包括每周额度及其重置时间）
+    // 所有额度窗口放入同一主卡，既突出剩余额度，也不会因窗口类型变化而遗漏信息。
     @ViewBuilder
     private var quotas: some View {
         if !store.snapshot.quotaWindows.isEmpty {
             VStack(spacing: 8) {
                 ForEach(store.snapshot.quotaWindows) { window in
-                    VStack(spacing: 4) {
+                    VStack(alignment: .leading, spacing: 5) {
                         HStack {
-                            Text(window.remainingTitle).lineLimit(1)
-                            Spacer()
-                            Text("\(window.remainingPercent, specifier: "%.0f")%")
-                                .monospacedDigit()
-                                .fixedSize()
-                        }
-                        .font(.caption)
-                        QuotaProgressBar(remaining: window.remainingPercent / 100, height: 6)
-                        if let resetsAt = window.resetsAt {
-                            Text("重置：\(resetsAt, format: .dateTime.month().day().hour().minute())")
-                                .font(.system(size: 11))
+                            Text(window.remainingTitle)
+                                .font(.caption)
                                 .foregroundStyle(.secondary)
                                 .lineLimit(1)
-                                .minimumScaleFactor(0.8)
-                                .frame(maxWidth: .infinity, alignment: .trailing)
+                            Spacer()
+                            if let resetsAt = window.resetsAt {
+                                Text("重置：\(resetsAt, format: .dateTime.month().day().hour().minute())")
+                                    .font(.caption2)
+                                    .foregroundStyle(.secondary)
+                                    .lineLimit(1)
+                                    .minimumScaleFactor(0.75)
+                            }
                         }
+                        HStack(alignment: .firstTextBaseline, spacing: 5) {
+                            Text("\(window.remainingPercent, specifier: "%.0f")%")
+                                .font(.title3.monospacedDigit().weight(.bold))
+                            Text("剩余")
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                        }
+                        QuotaProgressBar(remaining: window.remainingPercent / 100, height: 5)
                     }
                     .accessibilityElement(children: .combine)
                 }
+            }
+            .padding(12)
+            .background(.blue.opacity(0.10), in: RoundedRectangle(cornerRadius: 14))
+            .overlay {
+                RoundedRectangle(cornerRadius: 14)
+                    .strokeBorder(.white.opacity(0.10), lineWidth: 1)
             }
             .fixedSize(horizontal: false, vertical: true)
             .layoutPriority(2)
         }
     }
 
-    private var rangePicker: some View {
-        HStack(spacing: 4) {
-            ForEach(UsageRange.allCases, id: \.self) { range in
-                let isSelected = store.snapshot.selectedRange == range
-                Button {
-                    store.selectRange(range)
-                } label: {
-                    Text("\(range.rawValue) 天")
-                        .font(.caption)
-                        .foregroundStyle(isSelected ? .white : .white.opacity(0.5))
-                        .frame(maxWidth: .infinity)
-                        .padding(.vertical, 3)
-                        .background(
-                            RoundedRectangle(cornerRadius: 6)
-                                .fill(isSelected ? .white.opacity(0.22) : .white.opacity(0.06))
-                        )
+    private var usageOverview: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Text("本地用量")
+                .font(.caption.weight(.semibold))
+                .foregroundStyle(.secondary)
+            HStack(spacing: 3) {
+                ForEach(UsageRange.allCases, id: \.self) { range in
+                    let isSelected = store.snapshot.selectedRange == range
+                    Button {
+                        store.selectRange(range)
+                    } label: {
+                        Text("\(range.rawValue) 天")
+                            .font(.caption.weight(isSelected ? .semibold : .regular))
+                            // 深色刘海上的系统 secondary 对比度不足，未选中项保留可见的白色层级。
+                            .foregroundStyle(isSelected ? .white : .white.opacity(0.65))
+                            .frame(maxWidth: .infinity)
+                            .frame(height: 26)
+                            .background(
+                                RoundedRectangle(cornerRadius: 7)
+                                    .fill(isSelected ? .white.opacity(0.14) : .clear)
+                            )
+                            // plain 样式不提供默认按钮底板，显式定义整块分段区域为命中范围。
+                            .contentShape(Rectangle())
+                    }
+                    .buttonStyle(.plain)
+                    .frame(maxWidth: .infinity)
+                    .accessibilityAddTraits(isSelected ? .isSelected : [])
                 }
-                .buttonStyle(.plain)
             }
+            .padding(2)
+            .background(.white.opacity(0.06), in: RoundedRectangle(cornerRadius: 9))
+            totals
         }
-        .frame(height: 22)
         .layoutPriority(2)
     }
 
     private var totals: some View {
-        VStack(spacing: 6) {
-            HStack(spacing: 8) {
-                metric(title: "Tokens", value: UsageFormat.tokens(totalTokens))
-                metric(
-                    title: "估算成本",
-                    value: totalCost.map { UsageFormat.cost($0) } ?? "—"
-                )
-            }
-            // 最后统计刷新时间
-            HStack(spacing: 4) {
-                Text("最后刷新")
-                    .font(.caption2)
-                    .foregroundStyle(.secondary)
-                Text(refreshedAtText)
-                    .font(.caption2.monospacedDigit())
-                    .foregroundStyle(.secondary)
-                Spacer()
-            }
+        HStack(spacing: 8) {
+            metric(title: "Token 总量", value: UsageFormat.tokens(totalTokens))
+            metric(title: "估算成本", value: totalCost.map { UsageFormat.cost($0) } ?? "—")
         }
     }
 
-    @ViewBuilder
     private var models: some View {
-        if !store.snapshot.topModels.isEmpty {
-            VStack(alignment: .leading, spacing: 3) {
+        let displayedModels = Array(store.snapshot.topModels.prefix(3))
+
+        return VStack(alignment: .leading, spacing: 6) {
+            HStack {
                 Text("常用模型")
                     .foregroundStyle(.secondary)
-                    .lineLimit(1)
-                // 只展示前 3 个模型，不再追加"其他"聚合项。
-                ForEach(Array(store.snapshot.topModels.prefix(3))) { model in
-                    HStack {
-                        Text(model.model)
-                            .lineLimit(1)
-                            .minimumScaleFactor(0.7)
-                        Spacer()
-                        Text(model.fraction, format: .percent.precision(.fractionLength(0)))
-                            .monospacedDigit()
-                            .fixedSize()
-                    }
-                    .lineLimit(1)
-                    .minimumScaleFactor(0.7)
-                    .accessibilityElement(children: .combine)
+                Spacer()
+                Text("前 3 项")
+                    .font(.caption2)
+                    .foregroundStyle(.tertiary)
+            }
+            // 固定预留三行，避免所选日期的模型数变化时让展开面板产生跳动。
+            ForEach(0..<3, id: \.self) { index in
+                if index < displayedModels.count {
+                    modelShare(displayedModels[index])
+                } else {
+                    Color.clear
+                        .frame(height: 20)
+                        .accessibilityHidden(true)
                 }
             }
-            .font(.caption)
-            .fixedSize(horizontal: false, vertical: true)
-            .layoutPriority(3)
         }
+        .font(.caption)
+        .fixedSize(horizontal: false, vertical: true)
+        .layoutPriority(3)
     }
 
-    private func metric(title: String, value: String, subtitle: String? = nil) -> some View {
-        VStack(alignment: .leading, spacing: 2) {
-            Text(title).font(.caption).foregroundStyle(.secondary)
-            Text(value).font(.headline.monospacedDigit())
-            if let subtitle {
-                Text(subtitle)
-                    .font(.caption2)
-                    .foregroundStyle(.orange)
+    private func modelShare(_ model: ModelShare) -> some View {
+        HStack {
+                Text(model.model)
                     .lineLimit(1)
-                    .minimumScaleFactor(0.75)
+                    .minimumScaleFactor(0.7)
+                Spacer()
+                Text(model.fraction, format: .percent.precision(.fractionLength(0)))
+                    .monospacedDigit()
+                    .fixedSize()
+        }
+        .font(.caption2)
+        .padding(.horizontal, 8)
+        .frame(height: 20)
+        .background {
+            GeometryReader { proxy in
+                Capsule()
+                    .fill(.white.opacity(0.10))
+                    .overlay(alignment: .leading) {
+                        Capsule()
+                            .fill(.blue.opacity(0.8))
+                            .frame(width: max(0, proxy.size.width * min(max(model.fraction, 0), 1)))
+                    }
             }
         }
-        .padding(.horizontal, 10)
-        .padding(.vertical, 8)
+        .accessibilityElement(children: .combine)
+    }
+
+    private func metric(title: String, value: String) -> some View {
+        VStack(alignment: .leading, spacing: 4) {
+            Text(title).font(.caption2).foregroundStyle(.secondary)
+            Text(value).font(.headline.monospacedDigit())
+        }
+        .padding(10)
         .frame(maxWidth: .infinity, alignment: .leading)
-        .background(.white.opacity(0.07), in: RoundedRectangle(cornerRadius: 10))
+        .background(.white.opacity(0.07), in: RoundedRectangle(cornerRadius: 12))
+        .overlay {
+            RoundedRectangle(cornerRadius: 12)
+                .strokeBorder(.white.opacity(0.08), lineWidth: 1)
+        }
         .accessibilityElement(children: .combine)
     }
 }

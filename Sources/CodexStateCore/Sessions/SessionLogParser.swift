@@ -15,6 +15,10 @@ public struct SessionLogParser: Sendable {
 
     public func parse(data: Data) throws -> ParseResult {
         let decoder = JSONDecoder()
+        // formatter 创建成本高；它们只在当前文件解析期间使用，既复用又不跨线程共享。
+        let timestampFormatter = ISO8601DateFormatter()
+        let fractionalTimestampFormatter = ISO8601DateFormatter()
+        fractionalTimestampFormatter.formatOptions.insert(.withFractionalSeconds)
         var model = "unknown"
         var previousUsage = TokenUsage.zero
         var contributions: [UsageContribution] = []
@@ -28,7 +32,8 @@ public struct SessionLogParser: Sendable {
                 case let .modelChanged(newModel):
                     model = newModel
                 case let .tokenCount(timestamp, usage):
-                    guard let date = Self.parseTimestamp(timestamp) else {
+                    guard let date = timestampFormatter.date(from: timestamp)
+                        ?? fractionalTimestampFormatter.date(from: timestamp) else {
                         malformedLineCount += 1
                         continue
                     }
@@ -47,13 +52,6 @@ public struct SessionLogParser: Sendable {
         }
 
         return ParseResult(contributions: contributions, malformedLineCount: malformedLineCount)
-    }
-
-    private static func parseTimestamp(_ value: String) -> Date? {
-        let formatter = ISO8601DateFormatter()
-        if let date = formatter.date(from: value) { return date }
-        formatter.formatOptions.insert(.withFractionalSeconds)
-        return formatter.date(from: value)
     }
 }
 

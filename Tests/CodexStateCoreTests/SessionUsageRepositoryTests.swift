@@ -61,10 +61,11 @@ struct SessionUsageRepositoryTests {
         let sessions = directory.appendingPathComponent("sessions")
         try FileManager.default.createDirectory(at: sessions, withIntermediateDirectories: true)
         try Data("{}\n".utf8).write(to: sessions.appendingPathComponent("session.jsonl"))
+        let cacheURL = directory.appendingPathComponent("usage-cache.json")
 
         var parseCount = 0
         let repository = SessionUsageRepository(
-            cacheURL: directory.appendingPathComponent("usage-cache.json"),
+            cacheURL: cacheURL,
             parser: { _ in
                 parseCount += 1
                 return ParseResult(contributions: [], malformedLineCount: 0)
@@ -72,9 +73,13 @@ struct SessionUsageRepositoryTests {
         )
 
         _ = try repository.load(home: directory, calendar: .current)
+        let firstCacheFileNumber = try FileManager.default.attributesOfItem(atPath: cacheURL.path)[.systemFileNumber] as? NSNumber
         _ = try repository.load(home: directory, calendar: .current)
+        let secondCacheFileNumber = try FileManager.default.attributesOfItem(atPath: cacheURL.path)[.systemFileNumber] as? NSNumber
 
         #expect(parseCount == 1)
+        #expect(firstCacheFileNumber != nil)
+        #expect(firstCacheFileNumber == secondCacheFileNumber)
     }
 
     @Test

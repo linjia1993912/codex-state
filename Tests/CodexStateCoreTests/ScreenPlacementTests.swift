@@ -57,7 +57,7 @@ struct ScreenPlacementTests {
     @Test
     func windowSizeIsFixedAndLayoutSizesMonotonicallyIncrease() {
         // 固定窗口尺寸：不随状态变化，避免 NSWindow frame 动画与 SwiftUI 动画不同步
-        #expect(NotchPanelController.windowSize == CGSize(width: 500, height: 360))
+        #expect(NotchPanelController.windowSize == CGSize(width: 500, height: 450))
 
         let layout = IslandLayout(notch: NotchInfo(width: 200, height: 32, hasNotch: true))
         let compact = layout.compactSize

@@ -4,8 +4,7 @@ Codex State 是一个原生 macOS 监控ChatGPT用量工具。模拟IPhone灵动
 
 ## 效果演示
 
-https://github.com/user-attachments/assets/e136c1a6-bc6f-487f-af30-b2dbc4bbde5f
-
+https://github.com/user-attachments/assets/9af0c129-c516-4c83-9b31-d2501dd6b965
 
 ## 特点
 
