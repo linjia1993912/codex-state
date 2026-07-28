@@ -2,12 +2,12 @@ import Foundation
 
 /// 统一的用量与价格格式化工具，确保全 UI 展示一致。
 public enum UsageFormat {
-    /// Token 用量格式化：>99.9M 使用一位小数的“亿”，其余保持 K/M 的既有格式。
+    /// Token 用量格式化：百万级使用“万”，达到 1 亿后使用一位小数的“亿”。
     public static func tokens(_ value: Int64) -> String {
-        if value > 99_900_000 {
+        if value >= 100_000_000 {
             String(format: "%.1f亿", Double(value) / 100_000_000)
         } else if value >= 1_000_000 {
-            String(format: "%.1fM", Double(value) / 1_000_000)
+            String(format: "%.0f万", Double(value) / 10_000)
         } else if value >= 1_000 {
             String(format: "%.0fK", Double(value) / 1_000)
         } else {
